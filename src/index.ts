@@ -21,6 +21,8 @@ export const Config = z.object({
   hotkey: z.string().default('AltRight').volatile(),
   mode: z.union(['hold', 'toggle']).default('hold').volatile(),
   autoSend: z.boolean().default(false).volatile(),
+  updateSource: z.union(['official', 'mirror']).default('official').volatile(),
+  mirrorUrl: z.string().default('').volatile(),
 })
 const keyRef = credentialRef('DSH_SPEEKER_API_KEY')
 function json(res: ServerResponse, status: number, value: unknown): void {

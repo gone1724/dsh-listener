@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { defaults, validatePreferences, workspaceFromHost, VERSION, type Preferences } from '../shared.ts'
+import { defaults, validatePreferences, workspaceFromHost, VERSION, type UpdateProgress, type Preferences } from '../shared.ts'
 import { settings } from './settings.ts'
 import { HotkeyCapture, HotkeyGesture, matches, releasesBinding } from './hotkey.ts'
 import { appendTranscript } from './draft.ts'
@@ -25,6 +25,7 @@ const style = `
 .speeker-actions{display:flex;gap:10px;margin-top:20px}.speeker-action{padding:8px 14px;border:1px solid #8885;border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit}.speeker-primary{background:#15803d;color:white;border-color:#15803d}.speeker-action:disabled{opacity:.5;cursor:default}
 .speeker-dialog{padding:0;border:1px solid #8885;border-radius:12px;max-width:min(680px,calc(100vw - 32px));max-height:85vh;color:inherit;background:var(--dsw-alias-bg-layer-1,Canvas);overflow:auto}.speeker-dialog::backdrop{background:#0006}.speeker-dialog-close{display:flex;justify-content:flex-end;padding:12px 16px 0}
 .speeker-settings .speeker-field{grid-template-columns:105px 1fr;gap:8px;margin:10px 0}.speeker-settings .speeker-field input:not([type=checkbox]),.speeker-settings .speeker-field select{padding:6px 8px;font-size:13px}.speeker-settings .speeker-action{padding:5px 10px;font-size:13px}.speeker-settings .speeker-actions{margin-top:12px}.speeker-popup{width:min(380px,calc(100vw - 48px));padding:16px;font-size:13px}.speeker-popup h2{font-size:16px;margin:0 0 10px}.speeker-popup p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.speeker-popup-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.speeker-progress{width:100%;height:8px;accent-color:#16a34a}
 @media(max-width:500px){.speeker-field{grid-template-columns:1fr;gap:6px}.speeker-settings{padding:12px}}
 `
 function Mic() {
@@ -138,15 +139,30 @@ function VoiceSettings() {
   const [clearKey, setClearKey] = useState(false)
   const [capture, setCapture] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [available, setAvailable] = useState(false)
   const [latestVersion, setLatestVersion] = useState('')
   const [managementMessage, setManagementMessage] = useState('')
+  const [updating, setUpdating] = useState(false)
+  const [progress, setProgress] = useState<UpdateProgress | null>(null)
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
   useEffect(() => { void settings.refresh().catch(error => setError(error.message)) }, [])
   useEffect(() => { if (saved && !dirty.current) { setForm(saved); setRevision(saved.revision) } }, [saved])
+  useEffect(() => {
+    if (!updating) return
+    const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      try { const value = await settings.progress(AbortSignal.any([controller.signal, AbortSignal.timeout(5000)])); if (!controller.signal.aborted) setProgress(value) }
+      catch { /* Progress transport failure must not abort the installation request. */ }
+      if (!controller.signal.aborted) timer = setTimeout(() => { void poll() }, 700)
+    }
+    void poll()
+    return () => { controller.abort(); clearTimeout(timer) }
+  }, [updating])
   useEffect(() => {
     if (!capture) return
     const recorder = new HotkeyCapture()
@@ -174,11 +190,12 @@ function VoiceSettings() {
   }, [capture])
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => { dirty.current = true; setForm(p => ({ ...p, [key]: value })) }
   const manage = (action: 'check' | 'update' | 'uninstall') => {
+    setProgress(action === 'update' ? { phase: 'checking', received: 0 } : null); setUpdating(action === 'update')
     setBusy(true); setManagementMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
-    void settings.manage(action).then(result => {
+    void settings.manage(action, form).then(result => {
       if (action === 'check') { setAvailable(!!result.available); setLatestVersion(result.latest ?? ''); setManagementMessage(result.available ? `发现新版 ${result.latest}` : '当前已是最新版本') }
-      else { setManagementMessage(result.message ?? '操作已完成'); setAvailable(false) }
-    }).catch(error => { setManagementMessage(''); setError(error.message) }).finally(() => setBusy(false))
+      else { setManagementMessage(result.message ?? '操作已完成'); setAvailable(false); if (action === 'update') setProgress(p => ({ ...p, received: p?.received ?? 0, phase: 'done' })) }
+    }).catch(error => { setManagementMessage(''); setProgress(null); setError(error.message) }).finally(() => { setBusy(false); setUpdating(false) })
   }
   return <section className="speeker-settings" data-speeker-settings>
     <h2>语音输入</h2><p>阿里云百炼 · 实时识别并追加到草稿</p>
@@ -196,15 +213,22 @@ function VoiceSettings() {
     <label className="speeker-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>
     <details><summary>使用说明</summary><p>自动发送默认关闭；开启后提交整个草稿。录音期间编辑过草稿时，仍需手动发送。按 Escape 取消录音，右键麦克风打开设置。AltGr 布局请改绑快捷键。</p><p>地域和 Workspace ID 必须与百炼密钥一致。模型需支持 DashScope 流式识别协议。音频发送至百炼，不写入磁盘。</p></details>
     <div className="speeker-actions"><button className="speeker-action speeker-primary" type="button" disabled={busy || !saved?.writable} onClick={() => {
-      setBusy(true); setMessage('')
-      void settings.save(form, revision, key.trim() || undefined, clearKey).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setClearKey(false); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => setBusy(false))
-    }}>{busy ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
+      setBusy(true); setSaving(true); setMessage('')
+      void settings.save(form, revision, key.trim() || undefined, clearKey).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setClearKey(false); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
+    }}>{saving ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
     <details open><summary>插件管理 · v{VERSION}</summary><p>卸载保留设置与密钥。更新后如需重启，会显示提示。</p>
+      <label className="speeker-field"><span>下载来源</span><select disabled={busy} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
+      <label className="speeker-field"><span>镜像网址</span><input type="url" disabled={busy || form.updateSource !== 'mirror'} value={form.mirrorUrl} placeholder="https://你的镜像域名" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
+      <p>镜像需支持 GitHub API、Raw 文件与源码压缩包。填写网址前缀即可。检查和更新立即使用当前选择；点击保存可记住设置。</p>
       <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
         <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
         <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>
       <p role="status" aria-label="更新状态">{managementMessage}</p>
+      {progress && progress.phase !== 'idle' && <div aria-live="polite">
+        <progress className="speeker-progress" aria-label="更新进度" max={100} value={progress.phase === 'done' ? 100 : progress.phase === 'downloading' && progress.total ? Math.min(100, progress.received / progress.total * 100) : undefined}/>
+        <p>{progress.phase === 'checking' ? '正在检查版本…' : progress.phase === 'installing' ? '下载完成，正在安装…' : progress.phase === 'done' ? '更新完成' : progress.phase === 'downloading' ? `已下载 ${(progress.received / 1024).toFixed(1)} KB${progress.total ? ` / ${(progress.total / 1024).toFixed(1)} KB（${Math.floor(Math.min(100, progress.received / progress.total * 100))}%）` : ''}` : '更新未完成'}</p>
+      </div>}
     </details>
     {error && <MessageDialog message={error} onClose={() => setError('')} onSettings={() => setError('')}/>}
   </section>

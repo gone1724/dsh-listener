@@ -3,8 +3,17 @@ export const DEFAULT_MODEL = 'qwen-audio-3.1-asr-flash-streaming'
 export const SAMPLE_RATE = 16000
 export const MAX_AUDIO_BYTES = 16000 * 2 * 120
 export const MAX_BUFFER_BYTES = 16000 * 2 * 15
-export const VERSION = '0.3.1'
-export interface Preferences {
+export const VERSION = '0.3.2'
+export interface UpdateSource {
+  updateSource: 'official' | 'mirror'
+  mirrorUrl: string
+}
+export interface UpdateProgress {
+  phase: 'idle' | 'checking' | 'downloading' | 'installing' | 'done' | 'error'
+  received: number
+  total?: number
+}
+export interface Preferences extends UpdateSource {
   model: string
   region: 'beijing' | 'singapore'
   workspaceId: string
@@ -19,6 +28,22 @@ export interface SettingsView extends Preferences {
 }
 export const defaults: Preferences = {
   model: DEFAULT_MODEL, region: 'beijing', workspaceId: '', hotkey: 'AltRight', mode: 'hold', autoSend: false,
+  updateSource: 'official', mirrorUrl: '',
+}
+
+export function validateUpdateSource(input: Partial<UpdateSource>): UpdateSource {
+  const updateSource = input.updateSource ?? 'official'
+  if (updateSource !== 'official' && updateSource !== 'mirror') throw new Error('更新下载来源无效')
+  if (input.mirrorUrl !== undefined && typeof input.mirrorUrl !== 'string') throw new Error('镜像网址无效')
+  const mirrorUrl = (input.mirrorUrl ?? '').trim()
+  if (mirrorUrl) {
+    try {
+      const url = new URL(mirrorUrl)
+      if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || mirrorUrl.length > 512) throw new Error()
+    } catch { throw new Error('镜像网址须为 HTTPS 前缀，不包含账号、查询参数或完整 GitHub 下载链接') }
+  }
+  if (updateSource === 'mirror' && !mirrorUrl) throw new Error('请先填写 GitHub 镜像网址')
+  return { updateSource, mirrorUrl: mirrorUrl.replace(/\/+$/, '') }
 }
 
 /** Only the DashScope run-task protocol is supported; model IDs are not arbitrary endpoints. */
@@ -31,7 +56,8 @@ export function validatePreferences(input: unknown): Preferences {
   if (typeof p.hotkey !== 'string' || !/^(?:(?:Control|Shift|Alt|Meta)\+)*(?:AltRight|AltLeft|ControlRight|ControlLeft|ShiftRight|ShiftLeft|MetaRight|MetaLeft|Key[A-Z]|Digit[0-9]|F(?:[1-9]|1[0-2])|Space)$/.test(p.hotkey)) throw new Error('快捷键无效')
   if (p.mode !== 'hold' && p.mode !== 'toggle') throw new Error('录音模式无效')
   if (typeof p.autoSend !== 'boolean') throw new Error('自动发送设置无效')
-  return { model: p.model, region: p.region, workspaceId: p.workspaceId, hotkey: p.hotkey, mode: p.mode, autoSend: p.autoSend }
+  const source = validateUpdateSource({ updateSource: p.updateSource as UpdateSource['updateSource'], mirrorUrl: p.mirrorUrl as string })
+  return { model: p.model, region: p.region, workspaceId: p.workspaceId, hotkey: p.hotkey, mode: p.mode, autoSend: p.autoSend, ...source }
 }
 export function upstreamUrl(p: Preferences): string {
   const region = p.region === 'beijing' ? 'cn-beijing' : 'ap-southeast-1'

@@ -1,4 +1,4 @@
-import { BASE, type SettingsView, type Preferences } from '../shared.ts'
+import { BASE, validateUpdateSource, type UpdateProgress, type UpdateSource, type SettingsView, type Preferences } from '../shared.ts'
 let snapshot: SettingsView | null = null
 const listeners = new Set<() => void>()
 function publish(value: SettingsView): void { snapshot = value; for (const fn of listeners) fn() }
@@ -13,8 +13,14 @@ export const settings = {
   getSnapshot: () => snapshot,
   subscribe: (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } },
   refresh: () => request(),
-  manage: async (action: 'check' | 'update' | 'uninstall'): Promise<{ current?: string; latest?: string; available?: boolean; message?: string; application?: string }> => {
-    const response = await fetch(`${BASE}/manage?action=${action}`, { method: 'POST', credentials: 'same-origin' })
+  progress: async (signal: AbortSignal): Promise<UpdateProgress> => {
+    const response = await fetch(`${BASE}/manage?action=progress`, { credentials: 'same-origin', signal })
+    if (!response.ok) throw new Error('无法读取更新进度')
+    return response.json()
+  },
+  manage: async (action: 'check' | 'update' | 'uninstall', source?: UpdateSource): Promise<{ current?: string; latest?: string; available?: boolean; message?: string; application?: string }> => {
+    const query = new URLSearchParams({ action, ...(action === 'uninstall' ? {} : validateUpdateSource(source ?? {})) })
+    const response = await fetch(`${BASE}/manage?${query}`, { method: 'POST', credentials: 'same-origin' })
     const result = await response.json()
     if (!response.ok) throw new Error(result.error ?? '插件管理失败')
     return result
