@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { defaults, validatePreferences, workspaceFromHost, VERSION, type UpdateProgress, type Preferences } from '../shared.ts'
+import { defaults, validatePreferences, validateUpdateSource, workspaceFromHost, VERSION, type UpdateSource, type UpdateProgress, type Preferences } from '../shared.ts'
 import { settings } from './settings.ts'
 import { HotkeyCapture, HotkeyGesture, matches, releasesBinding } from './hotkey.ts'
 import { appendTranscript } from './draft.ts'
@@ -147,10 +147,41 @@ function VoiceSettings() {
   const [managementMessage, setManagementMessage] = useState('')
   const [updating, setUpdating] = useState(false)
   const [progress, setProgress] = useState<UpdateProgress | null>(null)
+  const [downloadMessage, setDownloadMessage] = useState('')
+  const pendingDownload = useRef<UpdateSource | null>(null)
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
   useEffect(() => { void settings.refresh().catch(error => setError(error.message)) }, [])
-  useEffect(() => { if (saved && !dirty.current) { setForm(saved); setRevision(saved.revision) } }, [saved])
+  useEffect(() => () => {
+    if (pendingDownload.current) void settings.saveDownload(pendingDownload.current).catch(() => {})
+  }, [])
+  useEffect(() => { if (saved) { setRevision(saved.revision); if (!dirty.current) setForm({ ...saved, mirrorUrl: saved.mirrorUrl || defaults.mirrorUrl }) } }, [saved])
+  useEffect(() => {
+    if (!saved || busy) return
+    if (form.updateSource === saved.updateSource && form.mirrorUrl === saved.mirrorUrl) {
+      pendingDownload.current = null
+      setDownloadMessage(value => ['等待自动保存…', '正在自动保存…'].includes(value) ? '下载设置已自动保存' : value)
+      return
+    }
+    if (!saved.writable) { setDownloadMessage('当前配置只读，下载设置未保存'); return }
+    let source
+    try { source = validateUpdateSource(form, false) }
+    catch { pendingDownload.current = null; setDownloadMessage('请输入完整的 HTTPS 镜像网址，填写完成后自动保存'); return }
+    if (source.updateSource === saved.updateSource && source.mirrorUrl === saved.mirrorUrl) {
+      pendingDownload.current = null; setDownloadMessage('下载设置已自动保存'); return
+    }
+    pendingDownload.current = source
+    let live = true
+    setDownloadMessage('等待自动保存…')
+    const timer = setTimeout(() => {
+      setDownloadMessage('正在自动保存…')
+      void settings.saveDownload(source).then(() => {
+        if (pendingDownload.current?.updateSource === source.updateSource && pendingDownload.current.mirrorUrl === source.mirrorUrl) pendingDownload.current = null
+        if (live) setDownloadMessage('下载设置已自动保存')
+      }).catch(error => { if (live) setDownloadMessage(`自动保存失败：${error.message}`) })
+    }, 500)
+    return () => { live = false; clearTimeout(timer) }
+  }, [form.updateSource, form.mirrorUrl, saved, busy])
   useEffect(() => {
     if (!updating) return
     const controller = new AbortController()
@@ -218,9 +249,10 @@ function VoiceSettings() {
     }}>{saving ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
     <details open><summary>插件管理 · v{VERSION}</summary><p>卸载保留设置与密钥。更新后如需重启，会显示提示。</p>
-      <label className="speeker-field"><span>下载来源</span><select disabled={busy} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
-      <label className="speeker-field"><span>镜像网址</span><input type="url" disabled={busy || form.updateSource !== 'mirror'} value={form.mirrorUrl} placeholder="https://你的镜像域名" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
-      <p>镜像需支持 GitHub API、Raw 文件与源码压缩包。填写网址前缀即可。检查和更新立即使用当前选择；点击保存可记住设置。</p>
+      <label className="speeker-field"><span>下载来源</span><select disabled={busy || !saved?.writable} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
+      {form.updateSource === 'mirror' && <><label className="speeker-field"><span>镜像网址</span><input type="url" disabled={busy || !saved?.writable} value={form.mirrorUrl} placeholder="https://你的镜像域名" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
+      <p>镜像需支持 GitHub 文件与源码压缩包下载，填写网址前缀即可。切换到官方后仍保留地址。</p></>}
+      <p role="status" aria-label="下载设置保存状态">{downloadMessage || '下载来源和镜像网址自动保存，无需点击保存。'}</p>
       <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
         <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
         <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>

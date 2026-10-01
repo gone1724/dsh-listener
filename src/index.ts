@@ -7,7 +7,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
-import { BASE, defaults, validatePreferences, type Preferences, type SettingsView } from './shared.ts'
+import { BASE, defaults, validatePreferences, validateUpdateSource, type Preferences, type SettingsView } from './shared.ts'
 import { BailianTask } from './host/bailian.ts'
 import { mountHttpChannel } from './host/http-channel.ts'
 import { mountManagement } from './host/management.ts'
@@ -22,7 +22,7 @@ export const Config = z.object({
   mode: z.union(['hold', 'toggle']).default('hold').volatile(),
   autoSend: z.boolean().default(false).volatile(),
   updateSource: z.union(['official', 'mirror']).default('official').volatile(),
-  mirrorUrl: z.string().default('').volatile(),
+  mirrorUrl: z.string().default(defaults.mirrorUrl).volatile(),
 })
 const keyRef = credentialRef('DSH_SPEEKER_API_KEY')
 function json(res: ServerResponse, status: number, value: unknown): void {
@@ -65,7 +65,10 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
       if (req.method !== 'POST') { json(res, 405, { error: '方法不支持' }); return }
       if (!req.headers['content-type']?.startsWith('application/json')) { json(res, 415, { error: '需要 JSON 请求' }); return }
       const request = await body(req)
-      const next = validatePreferences(request?.preferences)
+      const downloadOnly = request?.updateDownload !== undefined
+      const source = downloadOnly ? validateUpdateSource(request.updateDownload, false) : undefined
+      const next = downloadOnly ? undefined : validatePreferences(request?.preferences)
+      if (downloadOnly && (request.apiKey !== undefined || request.clearKey !== undefined)) throw new Error('下载设置不能修改密钥')
       if (!Number.isInteger(request?.revision) || request.revision < 0) throw new Error('设置版本无效，请刷新后重试')
       if (request.apiKey !== undefined && (typeof request.apiKey !== 'string' || request.apiKey.length > 2048 || !request.apiKey.trim())) throw new Error('API Key 无效')
       if (request.clearKey !== undefined && typeof request.clearKey !== 'boolean') throw new Error('密钥操作无效')
@@ -76,7 +79,7 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
         // Credentials are stored by Harness, never in the plugin profile or response.
         if (request.apiKey !== undefined) await ctx.credentials.set(keyRef, request.apiKey.trim())
         if (request.clearKey === true) await ctx.credentials.unset(keyRef)
-        await ctx.settings.update(name, next, request.revision)
+        await ctx.settings.update(name, downloadOnly ? validatePreferences({ ...preferences(), ...source }) : next!, request.revision)
       })
       writes = write.catch(() => undefined)
       await write
