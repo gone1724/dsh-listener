@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { defaults, validatePreferences, validateUpdateSource, workspaceFromHost, VERSION, type UpdateSource, type UpdateProgress, type Preferences } from '../shared.ts'
+import { defaults, validatePreferences, validateUpdateSource, workspaceFromHost, VERSION, type SettingsView, type UpdateSource, type UpdateProgress, type Preferences } from '../shared.ts'
 import { settings } from './settings.ts'
 import { HotkeyCapture, HotkeyGesture, matches, releasesBinding } from './hotkey.ts'
 import { appendTranscript } from './draft.ts'
@@ -132,6 +132,25 @@ function SettingsDialog({ onClose }: { onClose: () => void }) {
   </dialog>
 }
 
+function UpdateIndicator({ progress }: { progress: UpdateProgress | null }) {
+  if (!progress || progress.phase === 'idle') return null
+  const percent = progress.total ? Math.min(100, progress.received / progress.total * 100) : undefined
+  let value: number | undefined
+  let label: string
+  switch (progress.phase) {
+    case 'checking': label = '正在检查版本…'; break
+    case 'installing': label = '下载完成，正在安装…'; break
+    case 'done': value = 100; label = '更新完成'; break
+    case 'downloading':
+      value = percent
+      label = `已下载 ${(progress.received / 1024).toFixed(1)} KB`
+      if (progress.total) label += ` / ${(progress.total / 1024).toFixed(1)} KB（${Math.floor(percent!)}%）`
+      break
+    default: label = '更新未完成'
+  }
+  return <div aria-live="polite"><progress className="speeker-progress" aria-label="更新进度" max={100} value={value}/><p>{label}</p></div>
+}
+
 function VoiceSettings() {
   const saved = useSyncExternalStore(settings.subscribe, settings.getSnapshot)
   const [form, setForm] = useState<Preferences>(defaults)
@@ -213,6 +232,24 @@ function VoiceSettings() {
     return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', blur) }
   }, [capture])
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => { dirty.current = true; setForm(p => ({ ...p, [key]: value })) }
+  const applySavedSettings = (value: SettingsView) => {
+    dirty.current = false
+    setForm(value); setRevision(value.revision); setKey('')
+  }
+  const saveConfiguration = () => {
+    setBusy(true); setSaving(true); setMessage('')
+    void settings.save(form, revision, key.trim() || undefined).then(value => {
+      applySavedSettings(value); setMessage('设置已保存')
+    }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
+  }
+  const resetConfiguration = () => {
+    pendingDownload.current = null
+    setBusy(true); setCapture(false); setMessage('')
+    void settings.reset().then(value => {
+      applySavedSettings(value)
+      setAvailable(false); setProgress(null); setManagementMessage(''); setMessage('已清除保存的配置')
+    }).catch(error => setError(error.message)).finally(() => setBusy(false))
+  }
   const manage = (action: 'check' | 'update' | 'uninstall') => {
     setProgress(action === 'update' ? { phase: 'checking', received: 0 } : null); setUpdating(action === 'update')
     setBusy(true); setManagementMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
@@ -234,13 +271,11 @@ function VoiceSettings() {
     <div className="speeker-field"><span>快捷键</span><div className="speeker-shortcut"><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="speeker-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键' : '录入快捷键'}</button></div></div>
     <label className="speeker-field"><span>录音模式</span><select value={form.mode} onChange={e => update('mode', e.target.value as Preferences['mode'])}><option value="hold">长按：按下开始，松开停止</option><option value="toggle">点按：再次按下停止</option></select></label>
     <label className="speeker-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>
-    <div className="speeker-actions"><button className="speeker-action speeker-primary" type="button" disabled={busy || !saved?.writable} onClick={() => {
-      setBusy(true); setSaving(true); setMessage('')
-      void settings.save(form, revision, key.trim() || undefined).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
-    }}>{saving ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy || !saved?.writable} onClick={() => {
-      pendingDownload.current = null; setBusy(true); setCapture(false); setMessage('')
-      void settings.reset().then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setAvailable(false); setProgress(null); setManagementMessage(''); setMessage('已清除保存的配置') }).catch(error => setError(error.message)).finally(() => setBusy(false))
-    }}>清除已保存配置</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
+    <div className="speeker-actions">
+      <button className="speeker-action speeker-primary" type="button" disabled={busy || !saved?.writable} onClick={saveConfiguration}>{saving ? '保存中…' : '保存'}</button>
+      <button type="button" className="speeker-action" disabled={busy || !saved?.writable} onClick={resetConfiguration}>清除已保存配置</button>
+      <button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button>
+    </div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
     <details open><summary>插件管理 · v{VERSION}</summary>
       <label className="speeker-field"><span>下载来源</span><select disabled={busy || !saved?.writable} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
@@ -250,10 +285,7 @@ function VoiceSettings() {
         <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
         <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>
       <p role="status" aria-label="更新状态">{managementMessage}</p>
-      {progress && progress.phase !== 'idle' && <div aria-live="polite">
-        <progress className="speeker-progress" aria-label="更新进度" max={100} value={progress.phase === 'done' ? 100 : progress.phase === 'downloading' && progress.total ? Math.min(100, progress.received / progress.total * 100) : undefined}/>
-        <p>{progress.phase === 'checking' ? '正在检查版本…' : progress.phase === 'installing' ? '下载完成，正在安装…' : progress.phase === 'done' ? '更新完成' : progress.phase === 'downloading' ? `已下载 ${(progress.received / 1024).toFixed(1)} KB${progress.total ? ` / ${(progress.total / 1024).toFixed(1)} KB（${Math.floor(Math.min(100, progress.received / progress.total * 100))}%）` : ''}` : '更新未完成'}</p>
-      </div>}
+      <UpdateIndicator progress={progress}/>
     </details>
     {error && <MessageDialog message={error} onClose={() => setError('')} onSettings={() => setError('')}/>}
   </section>
