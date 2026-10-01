@@ -1,4 +1,4 @@
-# v0.1 验证记录
+# v0.2.0 验证记录
 
 日期：2026-10-02。环境：Windows、Node.js 22.23.2、pnpm 10.18.0、Harness 0.2.0-rc.2、Cordis 4.0.4。
 
@@ -14,13 +14,14 @@
 - 实际 Chromium 页面：合成麦克风音频通过真实 AudioWorklet 产生 242 个 PCM 块（774400 字节）；麦克风录音按钮显示绿色，停止时释放轨道。
 - 浏览器 mock 最终结果将 `已有草稿。` 更新为 `已有草稿。这是流式语音测试。`，没有自动发送。
 - 实际 Host 设置接口：无登录状态返回 401，外部 Origin 返回 403。
-- `pnpm verify:package`：安装包包含 9 个必需文件，包含客户端模块工厂、PCM worklet 和本验证记录，排除了凭据、测试 profile、node_modules 等私有文件。
+- `pnpm verify:package`：安装包包含 11 个文件，包含客户端模块工厂、PCM worklet、更新日志、更新说明和本验证记录，排除了凭据、测试 profile、node_modules 等私有文件。
+- 设置入口修复后在同版本真实 Harness Web 中验证：麦克风旁的“语音设置”弹窗可打开 API Key 表单；设置导航独立的“云端语音输入”页也显示完整表单。用户 Desktop 实例仍待复核。
 
 ## 尚未验证
 
 - 真实百炼 API Key、账户模型开通、专属 Workspace 域名、识别准确率、延迟和计费。当前只验证官方协议对应的 mock，不能将其视为云端验收。
 - 物理键盘上的 AltGr 各语言布局、其他浏览器、macOS/Linux、Harness 桌面容器。
-- GitHub 远程安装和 GitHub Actions 实际运行：项目尚未发布；CI 工作流已提供。
+- GitHub 远程安装和 GitHub Actions 实际运行：本次验证未执行远程安装或检查远程 CI；CI 工作流已提供。
 
 ## 人工云端验收
 

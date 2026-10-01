@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
-const tar = gunzipSync(readFileSync('output/dsh-speeker-0.1.0.tgz'))
+const tar = gunzipSync(readFileSync('output/dsh-speeker-0.2.0.tgz'))
 const files = new Map()
 for (let offset = 0; offset + 512 <= tar.length;) {
   const header = tar.subarray(offset, offset + 512)
@@ -11,7 +11,7 @@ for (let offset = 0; offset + 512 <= tar.length;) {
   files.set(name, tar.subarray(offset + 512, offset + 512 + size))
   offset += 512 + Math.ceil(size / 512) * 512
 }
-for (const name of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cordis.patch.yml', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'docs/VALIDATION.md', 'package.json']) {
+for (const name of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cordis.patch.yml', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'docs/VALIDATION.md', 'docs/UPDATES.md', 'package.json']) {
   assert.ok(files.get(`package/${name}`)?.length, `Missing package file: ${name}`)
 }
 assert.match(files.get('package/lib/client.js').toString(), /window\.__ModuleLoader__\.load/)

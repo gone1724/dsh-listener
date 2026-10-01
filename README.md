@@ -1,5 +1,7 @@
 # dsh-speeker
 
+当前插件版本：**0.2.0**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+
 DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开停止；音频实时上传至阿里云百炼，最终识别文字追加到当前会话草稿，默认不发送。
 
 默认模型：`qwen-audio-3.1-asr-flash-streaming`。只调用用户配置的百炼服务，不提供本地 ASR 或浏览器 Web Speech 回退。
@@ -27,8 +29,8 @@ dsh web
 
 ```powershell
 dsh plugin --profile web add github:gone1724/dsh-listener
-# 发布 v0.1.0 标签后可固定版本：
-dsh plugin --profile web add github:gone1724/dsh-listener#v0.1.0
+# 固定版本：
+dsh plugin --profile web add github:gone1724/dsh-listener#v0.2.0
 dsh web
 ```
 
@@ -40,7 +42,7 @@ dsh plugin --profile web remove dsh-speeker
 
 ## 配置
 
-在 Harness **设置 → 内置插件 → 云端语音输入** 中配置（不同布局可能称作“插件”）：
+点击输入框麦克风旁的 **语音设置** 配置；也可以在 Harness **设置 → 云端语音输入** 打开同一表单。配置入口不依赖“内置插件”页面是否存在。
 
 | 设置 | 默认值 / 说明 |
 | --- | --- |
@@ -82,7 +84,7 @@ dsh plugin --profile web remove dsh-speeker
 
 停止收音后先发送残余 PCM，再结束任务；等待 `task-finished`，避免丢失末尾结果。按句子 ID 合并最终文本，中间结果不写入草稿。草稿通过 Harness 公共动作修改，保留引用芯片并形成可撤销编辑。
 
-Host 在每次录音开始时固定配置，设置变更用于下一次录音。最多允许四条并发录音连接；配置和 API Key 属于同一个 Harness Host/profile，所有已授权用户共享，v0.1 不提供多租户凭据隔离。
+Host 在每次录音开始时固定配置，设置变更用于下一次录音。最多允许四条并发录音连接；配置和 API Key 属于同一个 Harness Host/profile，所有已授权用户共享，v0.2 不提供多租户凭据隔离。
 
 ## 隐私与错误处理
 
@@ -108,6 +110,8 @@ pnpm verify:package
 本机 mock 不需要 API Key。真实百炼识别准确率、真实计费和 AltGr 各布局仍需人工验收；mock 通过不表示已经完成云端验收。安装包应同时包含 `lib/index.js`、`lib/client.js`、`lib/pcm-worklet.js`、`cordis.patch.yml` 和许可文件。
 
 本次运行记录与人工验收步骤见 [验证记录](docs/VALIDATION.md)。
+
+Desktop 设置入口和热更新机制见 [更新说明](docs/UPDATES.md)。本地源码更新后需要重新构建；是否能自动重载取决于宿主 HMR 配置，替换安装包版本仍可能需要重启。
 
 ## 借鉴与开源协议
 

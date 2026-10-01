@@ -23,6 +23,7 @@ const style = `
 .speeker-settings{max-width:620px;padding:20px;color:inherit;font:inherit}.speeker-settings h2{margin:0 0 8px;font-size:20px}.speeker-settings p{line-height:1.6;opacity:.8}
 .speeker-field{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:16px 0}.speeker-field input:not([type=checkbox]),.speeker-field select{box-sizing:border-box;width:100%;padding:9px 10px;color:inherit;background:var(--dsw-alias-bg-layer-2,#8881);border:1px solid #8885;border-radius:7px;font:inherit}.speeker-field input[type=checkbox]{width:18px;height:18px;accent-color:#16a34a}
 .speeker-actions{display:flex;gap:10px;margin-top:20px}.speeker-action{padding:8px 14px;border:1px solid #8885;border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit}.speeker-primary{background:#15803d;color:white;border-color:#15803d}.speeker-action:disabled{opacity:.5;cursor:default}
+.speeker-dialog{padding:0;border:1px solid #8885;border-radius:12px;max-width:min(680px,calc(100vw - 32px));max-height:85vh;color:inherit;background:var(--dsw-alias-bg-layer-1,Canvas);overflow:auto}.speeker-dialog::backdrop{background:#0006}.speeker-dialog-close{display:flex;justify-content:flex-end;padding:12px 16px 0}
 @media(max-width:500px){.speeker-field{grid-template-columns:1fr;gap:6px}.speeker-settings{padding:12px}}
 `
 function Mic() {
@@ -37,6 +38,7 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
   const start = useRef({ revision: 0, autoSend: false })
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const [session] = useState(() => new VoiceSession(text => {
     if (owner === session) owner = undefined
@@ -96,9 +98,11 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
   const label = state.phase === 'recording' ? '停止录音' : state.phase === 'requesting' ? '取消麦克风请求' : state.phase === 'finishing' ? '正在识别' : '开始语音输入'
   return <div className="speeker-control">
     <button ref={button} type="button" className="speeker-button" aria-label={label} aria-pressed={session.active()} data-recording={state.phase === 'recording'}
-      title={config?.configured ? `${label}（${config.hotkey}）` : '请在设置 → 插件 → 云端语音输入中配置 API Key'}
+      title={config?.configured ? `${label}（${config.hotkey}）` : '点击旁边的“语音设置”配置 API Key'}
       disabled={!config?.configured || state.phase === 'finishing' || input.phase !== 'plain'}
       onClick={() => { if (session.active()) operations.current.finish(); else operations.current.begin() }}><Mic />{state.phase === 'recording' && <span>录音中</span>}</button>
+    <button type="button" className="speeker-button" aria-label="语音设置" title="配置百炼 API Key、快捷键和自动发送" disabled={session.busy()} onClick={() => setShowSettings(true)}>语音设置</button>
+    {showSettings && <SettingsDialog onClose={() => setShowSettings(false)}/>}
     {session.busy() && <button className="speeker-button" type="button" onClick={() => { session.cancel('已取消录音'); if (owner === session) owner = undefined }}>取消</button>}
     <span className="speeker-status" role="status" title={state.preview}>{state.preview || state.message || notice}</span>
     {pending && <><button className="speeker-button" type="button" onClick={() => {
@@ -106,6 +110,15 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
       if (result !== 'blocked') { setPending(''); setNotice('语音已追加') }
     }}>追加识别文字</button><button className="speeker-button" type="button" onClick={() => { void (navigator.clipboard?.writeText(pending) ?? Promise.reject()).then(() => setNotice('已复制识别文字')).catch(() => setNotice('无法复制，请使用追加按钮')) }}>复制</button></>}
   </div>
+}
+
+function SettingsDialog({ onClose }: { onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => { dialog.current?.showModal() }, [])
+  return <dialog ref={dialog} className="speeker-dialog" aria-label="云端语音输入设置" onCancel={onClose} onClose={onClose}>
+    <div className="speeker-dialog-close"><button type="button" className="speeker-action" onClick={onClose}>关闭</button></div>
+    <VoiceSettings/>
+  </dialog>
 }
 
 function VoiceSettings() {
@@ -169,7 +182,7 @@ export function apply(ctx: Context): void {
     return () => sheet.remove()
   })
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-speeker', order: 90 }, VoiceButton))
-  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({ name: 'settings.plugins.tab', id: 'dsh-speeker', order: 25, label: () => '云端语音输入' }, VoiceSettings))
+  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-speeker', order: 25, label: () => '云端语音输入' }, VoiceSettings))
   ctx.effect(() => () => { for (const session of sessions) session.cancel(); sessions.clear(); owner = undefined })
   void settings.refresh().catch(() => undefined)
 }
