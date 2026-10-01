@@ -38,6 +38,15 @@ export function upstreamUrl(p: Preferences): string {
     : p.region === 'beijing' ? 'dashscope.aliyuncs.com' : 'dashscope-intl.aliyuncs.com'
   return `wss://${host}/api-ws/v1/inference`
 }
+/** Accept only official workspace hosts; never allow an arbitrary upload destination. */
+export function workspaceFromHost(value: string): { workspaceId: string; region: Preferences['region'] } | undefined {
+  try {
+    const url = new URL(value.includes('://') ? value : `https://${value}`)
+    if (!['https:', 'wss:'].includes(url.protocol) || url.username || url.password || url.port) return
+    const match = /^([a-zA-Z0-9-]{1,64})\.(cn-beijing|ap-southeast-1)\.maas\.aliyuncs\.com$/.exec(url.hostname)
+    if (match) return { workspaceId: match[1], region: match[2] === 'cn-beijing' ? 'beijing' : 'singapore' }
+  } catch { /* Not a complete workspace host. */ }
+}
 export function joinText(left: string, right: string): string {
   if (!left || !right || /\s$/.test(left) || /^\s/.test(right)) return left + right
   return left + (/[A-Za-z0-9]$/.test(left) && /^[A-Za-z0-9]/.test(right) ? ' ' : '') + right

@@ -1,10 +1,10 @@
-# v0.2.0 验证记录
+# v0.2.1 验证记录
 
 日期：2026-10-02。环境：Windows、Node.js 22.23.2、pnpm 10.18.0、Harness 0.2.0-rc.2、Cordis 4.0.4。
 
 ## 已验证
 
-- `pnpm check`：TypeScript 检查、26 项测试及 Host/Client 构建通过。
+- `pnpm check`：TypeScript 检查、33 项测试及 Host/Client 构建通过。
 - 本机真实 WebSocket mock 上游：run-task、等待 task-started、二进制音频顺序、finish-task、句尾结果及 task-finished。
 - 客户端异步权限申请取消、连接等待缓冲、残余音频先于结束指令、断线取消及 120 秒上限正常收尾。
 - 快捷键长按/点按状态机、重复事件、左右 Alt 区分、AltGr 排除、按住期间改变模式。
@@ -18,6 +18,8 @@
 - 设置入口修复后在同版本真实 Harness Web 中验证：麦克风旁的“语音设置”弹窗可打开 API Key 表单；设置导航独立的“云端语音输入”页也显示完整表单。用户 Desktop 实例仍待复核。
 
 ## 尚未验证
+
+0.2.1 新增验证：真实 Harness 页面中的本地 WebSocket 握手成功，使用独立测试 profile 中的无效占位密钥收到百炼 HTTP 401（没有使用用户提供的密钥）。浏览器模拟本地握手失败时，正确显示弹窗；右键麦克风打开设置；没有额外固定按钮；API Host 自动提取及紧凑布局已截图检查。新增测试覆盖缺失/不可读凭据的本地 WebSocket 错误响应、域名校验和 HTTP 401/403 定位。用户 Desktop 的真实失败原因尚未确认。
 
 - 真实百炼 API Key、账户模型开通、专属 Workspace 域名、识别准确率、延迟和计费。当前只验证官方协议对应的 mock，不能将其视为云端验收。
 - 物理键盘上的 AltGr 各语言布局、其他浏览器、macOS/Linux、Harness 桌面容器。

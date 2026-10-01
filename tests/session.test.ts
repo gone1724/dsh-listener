@@ -26,6 +26,16 @@ beforeEach(() => {
   vi.stubGlobal('WebSocket', Socket); vi.stubGlobal('window', { location: { href: 'http://localhost/' } })
 })
 afterEach(() => vi.unstubAllGlobals())
+it.each([401, 403, 200])('WebSocket 失败时依据本地 HTTP %s 定位，而不是误报百炼密钥', async (status) => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status, ok: status === 200 }))
+  const session = new VoiceSession(vi.fn())
+  const start = session.start(); audio.starts[0](); await start
+  Socket.instances[0].onerror?.(); Socket.instances[0].onclose?.()
+  await Promise.resolve(); await Promise.resolve()
+  expect(session.getSnapshot().phase).toBe('error')
+  expect(session.getSnapshot().message).toContain(status === 200 ? 'WebSocket 握手失败' : `HTTP ${status}`)
+  expect(audio.cancels).toBeGreaterThan(0)
+})
 it('权限申请时松键取消，不会在迟到授权后开始持续录音', async () => {
   const final = vi.fn(), session = new VoiceSession(final)
   const start = session.start()

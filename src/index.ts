@@ -88,13 +88,15 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
     const admission = ctx.connection.admit(req)
     if ('rejection' in admission) { socket.end(`HTTP/1.1 ${admission.rejection} Rejected\r\nConnection: close\r\n\r\n`); return }
     if (disposed || wss.clients.size >= 4) { socket.end('HTTP/1.1 503 Busy\r\nConnection: close\r\n\r\n'); return }
-    const key = await ctx.credentials.resolve(keyRef)
-    if (disposed || socket.destroyed) return
-    if (!key) { socket.end('HTTP/1.1 503 Missing Credential\r\nConnection: close\r\n\r\n'); return }
-    if (wss.clients.size >= 4) { socket.end('HTTP/1.1 503 Busy\r\nConnection: close\r\n\r\n'); return }
-    const p = preferences()
     wss.handleUpgrade(req, socket, head, client => {
       const send = (event: unknown) => { if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(event)) }
+      const initialize = async () => {
+      let key: Awaited<ReturnType<typeof ctx.credentials.resolve>>
+      try { key = await ctx.credentials.resolve(keyRef) }
+      catch { send({ type: 'error', message: 'Harness 无法读取已保存的百炼密钥，请在语音输入设置中重新保存' }); client.close(); return }
+      if (disposed || client.readyState !== WebSocket.OPEN) return
+      if (!key) { send({ type: 'error', message: '尚未配置百炼 API Key，请打开语音输入设置' }); client.close(); return }
+      const p = preferences()
       const task = new BailianTask(p, key.value, event => {
         send(event)
         if (event.type === 'error' || event.type === 'final') { tasks.delete(client); client.close() }
@@ -111,6 +113,8 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
       })
       client.on('close', () => { task.cancel(); tasks.delete(client) })
       client.on('error', () => { task.cancel(); tasks.delete(client) })
+      }
+      void initialize().catch(() => { send({ type: 'error', message: '语音任务初始化失败，请检查配置并重启 Harness' }); client.close() })
     })
   } }))
   ctx.effect(() => () => {

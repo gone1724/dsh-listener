@@ -40,9 +40,12 @@ export class BailianTask {
           parameters: { format: 'pcm', sample_rate: SAMPLE_RATE }, input: {} } }))
     })
     this.socket.on('message', (raw: Buffer | string) => this.message(raw))
-    this.socket.on('error', () => this.fail('百炼连接失败，请检查 API Key、地域、模型和网络'))
+    this.socket.on('error', (error: { code?: string }) => {
+      const code = String(error?.code ?? '').replace(/[^A-Z0-9_]/g, '').slice(0, 40)
+      this.fail(`百炼连接失败${code ? `（${code}）` : ''}，请检查网络、地域和 Workspace ID`)
+    })
     this.socket.on('unexpected-response', (_req: unknown, response: { statusCode: number }) => {
-      this.fail(`百炼鉴权或连接失败（HTTP ${response.statusCode}）`)
+      this.fail(`百炼连接失败（HTTP ${response.statusCode}）。${response.statusCode === 401 || response.statusCode === 403 ? '请检查密钥有效性、地域、Workspace ID 和模型权限。' : '请检查 Workspace ID、服务地址和网络。'}`)
     })
     this.socket.on('close', () => { if (!this.ended) this.fail('百炼连接提前关闭，识别未完成') })
   }

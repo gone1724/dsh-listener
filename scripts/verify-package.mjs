@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
-const tar = gunzipSync(readFileSync('output/dsh-speeker-0.2.0.tgz'))
+const tar = gunzipSync(readFileSync('output/dsh-speeker-0.2.1.tgz'))
 const files = new Map()
 for (let offset = 0; offset + 512 <= tar.length;) {
   const header = tar.subarray(offset, offset + 512)
