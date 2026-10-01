@@ -26,6 +26,7 @@ const style = `
 .speeker-dialog{padding:0;border:1px solid #8885;border-radius:12px;max-width:min(680px,calc(100vw - 32px));max-height:85vh;color:inherit;background:var(--dsw-alias-bg-layer-1,Canvas);overflow:auto}.speeker-dialog::backdrop{background:#0006}.speeker-dialog-close{display:flex;justify-content:flex-end;padding:12px 16px 0}
 .speeker-settings .speeker-field{grid-template-columns:105px 1fr;gap:8px;margin:10px 0}.speeker-settings .speeker-field input:not([type=checkbox]),.speeker-settings .speeker-field select{padding:6px 8px;font-size:13px}.speeker-settings .speeker-action{padding:5px 10px;font-size:13px}.speeker-settings .speeker-actions{margin-top:12px}.speeker-popup{width:min(380px,calc(100vw - 48px));padding:16px;font-size:13px}.speeker-popup h2{font-size:16px;margin:0 0 10px}.speeker-popup p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.speeker-popup-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 .speeker-progress{width:100%;height:8px;accent-color:#16a34a}
+.speeker-shortcut{display:flex;align-items:center;gap:8px}.speeker-shortcut input{min-width:0;flex:1}.speeker-shortcut button{flex:none}.speeker-settings .speeker-hint{font-size:12px;margin:5px 0 0}
 @media(max-width:500px){.speeker-field{grid-template-columns:1fr;gap:6px}.speeker-settings{padding:12px}}
 `
 function Mic() {
@@ -69,7 +70,6 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
     const gesture = new HotkeyGesture({ start: () => operations.current.begin(), finish: () => operations.current.finish(), active: session.active }, () => latest.current.config?.mode ?? 'hold')
     let pressedCode = ''
     const down = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && owner === session && session.busy()) { session.cancel('已取消录音'); gesture.reset(); pressedCode = ''; event.preventDefault(); return }
       if (event.defaultPrevented || !document.hasFocus() || document.hidden || !button.current?.getClientRects().length) return
       // Shortcut capture in Settings must never start a recording.
       if ((event.target as HTMLElement)?.closest?.('[data-speeker-settings], [role="dialog"]')) return
@@ -136,7 +136,6 @@ function VoiceSettings() {
   const saved = useSyncExternalStore(settings.subscribe, settings.getSnapshot)
   const [form, setForm] = useState<Preferences>(defaults)
   const [key, setKey] = useState('')
-  const [clearKey, setClearKey] = useState(false)
   const [capture, setCapture] = useState(false)
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -147,7 +146,6 @@ function VoiceSettings() {
   const [managementMessage, setManagementMessage] = useState('')
   const [updating, setUpdating] = useState(false)
   const [progress, setProgress] = useState<UpdateProgress | null>(null)
-  const [downloadMessage, setDownloadMessage] = useState('')
   const pendingDownload = useRef<UpdateSource | null>(null)
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
@@ -160,25 +158,21 @@ function VoiceSettings() {
     if (!saved || busy) return
     if (form.updateSource === saved.updateSource && form.mirrorUrl === saved.mirrorUrl) {
       pendingDownload.current = null
-      setDownloadMessage(value => ['等待自动保存…', '正在自动保存…'].includes(value) ? '下载设置已自动保存' : value)
       return
     }
-    if (!saved.writable) { setDownloadMessage('当前配置只读，下载设置未保存'); return }
+    if (!saved.writable) return
     let source
     try { source = validateUpdateSource(form, false) }
-    catch { pendingDownload.current = null; setDownloadMessage('请输入完整的 HTTPS 镜像网址，填写完成后自动保存'); return }
+    catch { pendingDownload.current = null; return }
     if (source.updateSource === saved.updateSource && source.mirrorUrl === saved.mirrorUrl) {
-      pendingDownload.current = null; setDownloadMessage('下载设置已自动保存'); return
+      pendingDownload.current = null; return
     }
     pendingDownload.current = source
     let live = true
-    setDownloadMessage('等待自动保存…')
     const timer = setTimeout(() => {
-      setDownloadMessage('正在自动保存…')
       void settings.saveDownload(source).then(() => {
         if (pendingDownload.current?.updateSource === source.updateSource && pendingDownload.current.mirrorUrl === source.mirrorUrl) pendingDownload.current = null
-        if (live) setDownloadMessage('下载设置已自动保存')
-      }).catch(error => { if (live) setDownloadMessage(`自动保存失败：${error.message}`) })
+      }).catch(() => { if (live) setError('下载设置未保存，请刷新后重试。') })
     }, 500)
     return () => { live = false; clearTimeout(timer) }
   }, [form.updateSource, form.mirrorUrl, saved, busy])
@@ -204,7 +198,6 @@ function VoiceSettings() {
     }
     const keydown = (event: KeyboardEvent) => {
       event.preventDefault(); event.stopImmediatePropagation()
-      if (event.code === 'Escape') { setCapture(false); return }
       if (event.repeat || event.isComposing) return
       const binding = recorder.down(event)
       if (event.getModifierState('AltGraph')) { setMessage('AltGr 用于字符输入，请选择其他快捷键'); return }
@@ -230,29 +223,29 @@ function VoiceSettings() {
   }
   return <section className="speeker-settings" data-speeker-settings>
     <h2>语音输入</h2><p>阿里云百炼 · 实时识别并追加到草稿</p>
-    <label className="speeker-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => { setKey(e.target.value); setClearKey(false) }}/></label>
-    {saved?.configured && <label className="speeker-field"><span>清除已保存密钥</span><input type="checkbox" checked={clearKey} onChange={e => { setClearKey(e.target.checked); if (e.target.checked) setKey('') }}/></label>}
+    <label className="speeker-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => setKey(e.target.value)}/></label>
     <label className="speeker-field"><span>地域</span><select value={form.region} onChange={e => update('region', e.target.value as Preferences['region'])}><option value="beijing">北京</option><option value="singapore">新加坡</option></select></label>
-    <label className="speeker-field"><span>Workspace ID</span><input value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {
+    <label className="speeker-field"><span>Workspace ID</span><div><input aria-label="Workspace ID" aria-describedby="speeker-workspace-hint" value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {
       const value = e.target.value.trim(), workspace = workspaceFromHost(value)
       if (workspace) { dirty.current = true; setForm(p => ({ ...p, ...workspace })); setMessage('已从 API Host 提取空间 ID 和地域，点击保存生效') }
       else update('workspaceId', value)
-    }}/></label>
-    <label className="speeker-field"><span>识别模型</span><input value={form.model} onChange={e => update('model', e.target.value.trim())}/></label>
-    <div className="speeker-field"><span>快捷键</span><div><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="speeker-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键，Esc 取消' : '录入快捷键'}</button></div></div>
+    }}/><p id="speeker-workspace-hint" className="speeker-hint">地域和 Workspace ID 必须与百炼密钥一致。</p></div></label>
+    <label className="speeker-field"><span>识别模型</span><div><input aria-label="识别模型" aria-describedby="speeker-model-hint" value={form.model} onChange={e => update('model', e.target.value.trim())}/><p id="speeker-model-hint" className="speeker-hint">模型需支持 DashScope 流式识别协议。音频发送至百炼，不写入磁盘。</p></div></label>
+    <div className="speeker-field"><span>快捷键</span><div className="speeker-shortcut"><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="speeker-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键' : '录入快捷键'}</button></div></div>
     <label className="speeker-field"><span>录音模式</span><select value={form.mode} onChange={e => update('mode', e.target.value as Preferences['mode'])}><option value="hold">长按：按下开始，松开停止</option><option value="toggle">点按：再次按下停止</option></select></label>
     <label className="speeker-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>
-    <details><summary>使用说明</summary><p>自动发送默认关闭；开启后提交整个草稿。录音期间编辑过草稿时，仍需手动发送。按 Escape 取消录音，右键麦克风打开设置。AltGr 布局请改绑快捷键。</p><p>地域和 Workspace ID 必须与百炼密钥一致。模型需支持 DashScope 流式识别协议。音频发送至百炼，不写入磁盘。</p></details>
     <div className="speeker-actions"><button className="speeker-action speeker-primary" type="button" disabled={busy || !saved?.writable} onClick={() => {
       setBusy(true); setSaving(true); setMessage('')
-      void settings.save(form, revision, key.trim() || undefined, clearKey).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setClearKey(false); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
-    }}>{saving ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
+      void settings.save(form, revision, key.trim() || undefined).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
+    }}>{saving ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy || !saved?.writable} onClick={() => {
+      pendingDownload.current = null; setBusy(true); setCapture(false); setMessage('')
+      void settings.reset().then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setAvailable(false); setProgress(null); setManagementMessage(''); setMessage('已清除保存的配置') }).catch(error => setError(error.message)).finally(() => setBusy(false))
+    }}>清除已保存配置</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
-    <details open><summary>插件管理 · v{VERSION}</summary><p>卸载保留设置与密钥。更新后如需重启，会显示提示。</p>
+    <details open><summary>插件管理 · v{VERSION}</summary>
       <label className="speeker-field"><span>下载来源</span><select disabled={busy || !saved?.writable} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
       {form.updateSource === 'mirror' && <><label className="speeker-field"><span>镜像网址</span><input type="url" disabled={busy || !saved?.writable} value={form.mirrorUrl} placeholder="https://你的镜像域名" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
-      <p>镜像需支持 GitHub 文件与源码压缩包下载，填写网址前缀即可。切换到官方后仍保留地址。</p></>}
-      <p role="status" aria-label="下载设置保存状态">{downloadMessage || '下载来源和镜像网址自动保存，无需点击保存。'}</p>
+      </>}
       <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
         <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
         <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>

@@ -34,5 +34,6 @@ export const settings = {
     return result
   },
   saveDownload: (source: UpdateSource) => write({ updateDownload: validateUpdateSource(source, false) }, snapshot?.revision ?? 0),
+  reset: () => write({ reset: true }, snapshot?.revision ?? 0),
   save: (preferences: Preferences, revision: number, apiKey?: string, clearKey?: boolean) => write({ preferences, ...(apiKey ? { apiKey } : {}), ...(clearKey ? { clearKey: true } : {}) }, revision),
 }

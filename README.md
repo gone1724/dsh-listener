@@ -1,6 +1,6 @@
 # dsh-speeker
 
-当前插件版本：**0.3.3**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+当前插件版本：**0.3.4**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
 
 DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开停止；音频实时上传至阿里云百炼，最终识别文字追加到当前会话草稿，默认不发送。
 
@@ -16,7 +16,7 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 2. 在添加插件的输入框中粘贴以下地址，然后确认安装：
 
    ```text
-   github:gone1724/dsh-listener#v0.3.3
+   github:gone1724/dsh-listener#v0.3.4
    ```
 
 3. 安装完成后，完全退出并重新打开 Desktop。
@@ -29,7 +29,7 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 
 ```powershell
 npm install -g @deepseek-ai/dsh@0.2.0-rc.2
-dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.3
+dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.4
 dsh web
 ```
 
@@ -60,6 +60,8 @@ dsh web
 | 录音模式 | 长按；可选择点按 |
 | 自动发送 | 关闭 |
 
+“清除已保存配置”按钮会清除 API Key，并将模型、地域、空间、快捷键、录音模式、自动发送及下载设置恢复默认值。按钮位于刷新之前。
+
 模型名称允许修改，但必须支持 **DashScope run-task / finish-task WebSocket ASR 协议**。不能直接填入 OpenAI Whisper 或 `qwen3-asr-flash-realtime` 等不同协议的模型。模型开通和可用性以当前百炼账户为准。
 
 密钥由 Harness 凭据服务保存为 `DSH_SPEEKER_API_KEY`，设置接口不回传密钥。也可在启动前设置同名环境变量；环境变量优先时，Harness 可能拒绝页面写入，请移除该启动环境变量后重启再配置。默认凭据后端是 Harness 主目录的私有文件，不是加密钥匙串。普通设置保存在当前 profile 的插件配置中，并热生效。
@@ -74,7 +76,7 @@ dsh web
 
 快捷键只在 Harness 页面获得焦点时生效，忽略按键自动重复和输入法组合事件。默认使用 `KeyboardEvent.code === "AltRight"` 区分左右 Alt；检测到 AltGr 时保留其字符输入功能，请改绑其他键。可设置如 `F8`、`Control+Space` 等快捷键；浏览器或操作系统保留的组合可能无法使用。
 
-录音或识别期间按 Escape、切换会话、切换标签页或让窗口失焦，会停止采集并丢弃本次结果。每次录音最多 120 秒；网络等待最多缓冲 15 秒音频，过慢会取消。输入框锁定或版本冲突时保留识别文字，提供手动追加和复制按钮。
+录音或识别期间切换会话、切换标签页或让窗口失焦，会停止采集并丢弃本次结果。每次录音最多 120 秒；网络等待最多缓冲 15 秒音频，过慢会取消。输入框锁定或版本冲突时保留识别文字，提供手动追加和复制按钮。
 
 未识别到语音时安静结束，不弹窗、不修改草稿，也不会自动发送；连接、鉴权和模型等服务错误仍通过弹窗提示。
 
@@ -90,7 +92,7 @@ dsh web
 - **下载来源**：默认 GitHub 官方下载；国内网络可改选 GitHub 镜像下载，并填入 HTTPS 镜像网址前缀。
 - **一键卸载**：仅卸载 `dsh-speeker`，保留设置、密钥与已有草稿。录音期间不允许更新或卸载。
 
-镜像默认预填：`https://gh-proxy.org`（可填写其他兼容地址；已有自定义地址保留）。插件按“镜像前缀 / 完整 GitHub URL”拼接请求；镜像需同时支持 GitHub API、Raw 文件和 `.tar.gz` 源码包，格式见 [GH-Proxy 使用说明](https://gh-proxy.com/docs/github-accelerator)。例如：`https://你的镜像域名/https://github.com/gone1724/dsh-listener/archive/refs/tags/v0.3.3.tar.gz`。仅填写镜像前缀，不要粘贴整个下载链接。
+镜像默认预填：`https://gh-proxy.org`（可填写其他兼容地址；已有自定义地址保留）。插件按“镜像前缀 / 完整 GitHub URL”拼接请求；镜像需同时支持 GitHub API、Raw 文件和 `.tar.gz` 源码包，格式见 [GH-Proxy 使用说明](https://gh-proxy.com/docs/github-accelerator)。例如：`https://你的镜像域名/https://github.com/gone1724/dsh-listener/archive/refs/tags/v0.3.4.tar.gz`。仅填写镜像前缀，不要粘贴整个下载链接。
 
 检查更新与更新立即使用表单中的下载来源；下载来源和有效镜像网址自动保存，无需点击保存。官方模式隐藏镜像输入框，但保留已有地址，切回镜像或重新打开设置后继续显示。官方模式从 GitHub 下载固定发布标签的压缩包；镜像模式通过镜像查询版本、验证清单，并将固定标签的压缩包交给官方插件管理器安装，不直连 GitHub 进行上述请求。检查请求每次最多等待 30 秒；镜像不可用时明确报错，不自动回退官方来源。镜像不代理百炼音频或 API Key，依赖包仍由宿主配置的 npm registry 下载。
 

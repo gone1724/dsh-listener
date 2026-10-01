@@ -65,9 +65,12 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
       if (req.method !== 'POST') { json(res, 405, { error: '方法不支持' }); return }
       if (!req.headers['content-type']?.startsWith('application/json')) { json(res, 415, { error: '需要 JSON 请求' }); return }
       const request = await body(req)
+      const reset = request?.reset === true
+      if (request.reset !== undefined && typeof request.reset !== 'boolean') throw new Error('清除操作无效')
       const downloadOnly = request?.updateDownload !== undefined
       const source = downloadOnly ? validateUpdateSource(request.updateDownload, false) : undefined
-      const next = downloadOnly ? undefined : validatePreferences(request?.preferences)
+      const next = reset ? defaults : downloadOnly ? undefined : validatePreferences(request?.preferences)
+      if (reset && (downloadOnly || request.apiKey !== undefined || request.clearKey !== undefined)) throw new Error('清除不能与保存同时进行')
       if (downloadOnly && (request.apiKey !== undefined || request.clearKey !== undefined)) throw new Error('下载设置不能修改密钥')
       if (!Number.isInteger(request?.revision) || request.revision < 0) throw new Error('设置版本无效，请刷新后重试')
       if (request.apiKey !== undefined && (typeof request.apiKey !== 'string' || request.apiKey.length > 2048 || !request.apiKey.trim())) throw new Error('API Key 无效')
@@ -76,9 +79,10 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
       const write = writes.then(async () => {
         if (!ctx.settings.writable) throw new Error('当前配置只读')
         if (request.revision !== descriptor()?.revision) throw new Error('设置已变化，请刷新后重试')
+        if (reset && (channel.active() + tasks.size > 0)) throw new Error('请先结束录音')
         // Credentials are stored by Harness, never in the plugin profile or response.
         if (request.apiKey !== undefined) await ctx.credentials.set(keyRef, request.apiKey.trim())
-        if (request.clearKey === true) await ctx.credentials.unset(keyRef)
+        if (reset || request.clearKey === true) await ctx.credentials.unset(keyRef)
         await ctx.settings.update(name, downloadOnly ? validatePreferences({ ...preferences(), ...source }) : next!, request.revision)
       })
       writes = write.catch(() => undefined)
