@@ -1,6 +1,6 @@
 # dsh-speeker
 
-当前插件版本：**0.3.0**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+当前插件版本：**0.3.1**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
 
 DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开停止；音频实时上传至阿里云百炼，最终识别文字追加到当前会话草稿，默认不发送。
 
@@ -10,34 +10,40 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 
 当前兼容目标为 **DeepSeek Harness `0.2.0-rc.2`**、Node.js **22.19+**、pnpm **10.18+**。浏览器优先使用新版 Chrome / Edge；其他浏览器和桌面容器尚需验证。Harness 插件接口处于预览阶段，不承诺其他版本兼容。
 
-如果尚未安装 Harness：
+### 1. 桌面版 Harness 安装
+
+1. 打开 DSH Desktop，点击 **插件**，再点击 **添加插件**。
+2. 在添加插件的输入框中粘贴以下地址，然后确认安装：
+
+   ```text
+   github:gone1724/dsh-listener#v0.3.1
+   ```
+
+3. 安装完成后，完全退出并重新打开 Desktop。
+4. 打开 **设置 → 语音输入**，填写百炼 API Key；使用工作空间专属端点时，粘贴完整 API Host 到 Workspace ID，点击 **保存**。
+5. 进入会话，允许麦克风权限，即可使用右 Alt 或麦克风按钮录音。
+
+### 2. 命令行安装
+
+安装 Node.js 和 pnpm 后，在终端运行：
 
 ```powershell
 npm install -g @deepseek-ai/dsh@0.2.0-rc.2
+dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.1
+dsh web
 ```
 
-从本地源码安装（在本仓库目录中运行）：
+打开命令输出的页面，在 **设置 → 语音输入** 填写密钥并保存。仓库包含构建后的 `lib/`，GitHub 安装无需在本机编译。仓库名为 `dsh-listener`，插件包名为 `dsh-speeker`。
+
+### 3. 从本地源码安装（开发用）
+
+在本仓库目录运行：
 
 ```powershell
 pnpm install --frozen-lockfile
 pnpm check
 dsh plugin --profile web add .
 dsh web
-```
-
-仓库包含构建后的 `lib/`，GitHub 安装不依赖用户本机构建。GitHub 仓库为 `gone1724/dsh-listener`，插件包名为 `dsh-speeker`：
-
-```powershell
-dsh plugin --profile web add github:gone1724/dsh-listener
-# 固定版本：
-dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.0
-dsh web
-```
-
-升级或移除后重启 Harness，并刷新页面：
-
-```powershell
-dsh plugin --profile web remove dsh-speeker
 ```
 
 ## 配置
@@ -50,7 +56,7 @@ dsh plugin --profile web remove dsh-speeker
 | 地域 | 北京；可选择新加坡 |
 | Workspace ID | 推荐填写；可粘贴完整 API Host 自动提取地域和空间 ID。使用工作空间专属端点；留空使用传统 DashScope 域名 |
 | 识别模型 | `qwen-audio-3.1-asr-flash-streaming` |
-| 快捷键 | 右 Alt；点击“录入快捷键”后按键，保存生效 |
+| 快捷键 | 右 Alt；点击“录入快捷键”后按单键或组合键（如 Ctrl+Shift+V、Alt+Space），保存生效 |
 | 录音模式 | 长按；可选择点按 |
 | 自动发送 | 关闭 |
 
@@ -68,7 +74,9 @@ dsh plugin --profile web remove dsh-speeker
 
 快捷键只在 Harness 页面获得焦点时生效，忽略按键自动重复和输入法组合事件。默认使用 `KeyboardEvent.code === "AltRight"` 区分左右 Alt；检测到 AltGr 时保留其字符输入功能，请改绑其他键。可设置如 `F8`、`Control+Space` 等快捷键；浏览器或操作系统保留的组合可能无法使用。
 
-录音或识别期间按 Escape、点击取消、切换会话、切换标签页或让窗口失焦，会停止采集并丢弃本次结果。每次录音最多 120 秒；网络等待最多缓冲 15 秒音频，过慢会取消。输入框锁定或版本冲突时保留识别文字，提供手动追加和复制按钮。
+录音或识别期间按 Escape、切换会话、切换标签页或让窗口失焦，会停止采集并丢弃本次结果。每次录音最多 120 秒；网络等待最多缓冲 15 秒音频，过慢会取消。输入框锁定或版本冲突时保留识别文字，提供手动追加和复制按钮。
+
+未识别到语音时安静结束，不弹窗、不修改草稿，也不会自动发送；连接、鉴权和模型等服务错误仍通过弹窗提示。
 
 首次麦克风授权和设备初始化存在等待时间，授权前的声音无法采集；绿色按钮表示已经开始收音。Host 从远程机器提供页面时必须使用 HTTPS；localhost 是可用的安全上下文。
 

@@ -1,10 +1,17 @@
-# v0.3.0 验证记录
+# v0.3.1 验证记录
 
 日期：2026-10-02。环境：Windows、Node.js 22.23.2、pnpm 10.18.0、Harness 0.2.0-rc.2、Cordis 4.0.4。
 
+## v0.3.1 新增验证
+
+- 43 项测试、类型检查和构建通过；新增覆盖 Alt 组合录入、纯修饰键组合、组合键释放、空文本正常结束和零 PCM 取消。
+- 在独立测试 profile 的真实 Harness 0.2.0-rc.2 Chromium 页面中录入 Alt+Space 与 Control+Shift+KeyV，成功保存。
+- 设置页实际查询 GitHub 标签；“当前已是最新版本”位于检查更新按钮下方，同时保留“设置已保存”。截图：本地 output/playwright/v031-settings.png（不随包发布）。
+- 使用合成静音麦克风和真实 AudioWorklet，经 mock HTTP 服务正常返回空最终文本：麦克风轨道释放，无弹窗，已有草稿保持不变。未使用用户密钥或真实百炼识别。
+
 ## 已验证
 
-- `pnpm check`：TypeScript 检查、38 项测试及 Host/Client 构建通过。
+- `pnpm check`：TypeScript 检查、43 项测试及 Host/Client 构建通过。
 - 本机真实 WebSocket mock 上游：run-task、等待 task-started、二进制音频顺序、finish-task、句尾结果及 task-finished。
 - 客户端异步权限申请取消、连接等待缓冲、残余音频先于结束指令、断线取消及 120 秒上限正常收尾。
 - 快捷键长按/点按状态机、重复事件、左右 Alt 区分、AltGr 排除、按住期间改变模式。

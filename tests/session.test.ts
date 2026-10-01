@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-const audio = vi.hoisted(() => ({ starts: [] as (() => void)[], chunks: [] as ((chunk: ArrayBuffer) => void)[], stops: 0, cancels: 0 }))
+const audio = vi.hoisted(() => ({ starts: [] as (() => void)[], chunks: [] as ((chunk: ArrayBuffer) => void)[], stops: 0, cancels: 0, flush: true }))
 vi.mock('../src/client/audio.ts', () => ({ Recording: class {
   constructor(chunk: (data: ArrayBuffer) => void) { audio.chunks.push(chunk) }
   start() { return new Promise<void>(resolve => audio.starts.push(resolve)) }
-  async stop() { audio.stops++; audio.chunks.at(-1)?.(new ArrayBuffer(2)) }
+  async stop() { audio.stops++; if (audio.flush) audio.chunks.at(-1)?.(new ArrayBuffer(2)) }
   async cancel() { audio.cancels++ }
 } }))
 vi.mock('../src/client/channel.ts', () => ({ HttpVoiceChannel: class { constructor() { return new WebSocket('ws://localhost') } } }))
@@ -23,10 +23,26 @@ class Socket {
   message(data: object) { this.onmessage?.({ data: JSON.stringify(data) }) }
 }
 beforeEach(() => {
-  audio.starts = []; audio.chunks = []; audio.stops = 0; audio.cancels = 0; Socket.instances = []
+  audio.starts = []; audio.chunks = []; audio.stops = 0; audio.cancels = 0; audio.flush = true; Socket.instances = []
   vi.stubGlobal('WebSocket', Socket); vi.stubGlobal('window', { location: { href: 'http://localhost/' } })
 })
 afterEach(() => vi.unstubAllGlobals())
+it('服务正常返回空文本时安静结束，不触发草稿或提示回调', async () => {
+  const final = vi.fn(), session = new VoiceSession(final)
+  const start = session.start(); audio.starts[0](); await start
+  const socket = Socket.instances[0]; socket.message({ type: 'ready' })
+  await session.finish(); socket.message({ type: 'final', text: '  ' })
+  expect(session.getSnapshot()).toEqual({ phase: 'idle', preview: '', message: '' })
+  expect(final).not.toHaveBeenCalled(); expect(socket.readyState).toBe(3)
+})
+it('极短录音没有采到 PCM 时安静取消并释放麦克风', async () => {
+  audio.flush = false
+  const final = vi.fn(), session = new VoiceSession(final)
+  const start = session.start(); audio.starts[0](); await start
+  await session.finish()
+  expect(session.getSnapshot().phase).toBe('idle'); expect(session.getSnapshot().message).toBe('')
+  expect(audio.cancels).toBeGreaterThan(0); expect(final).not.toHaveBeenCalled()
+})
 it.each([401, 403, 200])('WebSocket 失败时依据本地 HTTP %s 定位，而不是误报百炼密钥', async (status) => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status, ok: status === 200 }))
   const session = new VoiceSession(vi.fn())

@@ -1,8 +1,35 @@
 import { describe, expect, it, vi } from 'vitest'
-import { HotkeyGesture, matches, type KeyLike } from '../src/client/hotkey.ts'
+import { HotkeyCapture, HotkeyGesture, matches, releasesBinding, type KeyLike } from '../src/client/hotkey.ts'
 import { appendTranscript } from '../src/client/draft.ts'
 const key: KeyLike = { code: 'AltRight', ctrlKey: false, altKey: true, shiftKey: false, metaKey: false, repeat: false, isComposing: false, getModifierState: () => false }
 describe('快捷键', () => {
+  it('Alt 不提前确认，支持 Alt+Space 和 Ctrl+Shift+V', () => {
+    const capture = new HotkeyCapture()
+    expect(capture.down(key)).toBeUndefined()
+    expect(capture.down({ ...key, code: 'Space' })).toBe('Alt+Space')
+    expect(capture.up({ ...key, altKey: false })).toBeUndefined()
+    expect(capture.down({ ...key, code: 'ControlLeft', altKey: false, ctrlKey: true })).toBeUndefined()
+    expect(capture.down({ ...key, code: 'ShiftLeft', altKey: false, ctrlKey: true, shiftKey: true })).toBeUndefined()
+    expect(capture.down({ ...key, code: 'KeyV', altKey: false, ctrlKey: true, shiftKey: true })).toBe('Control+Shift+KeyV')
+  })
+  it('支持单独右 Alt 和仅由修饰键组成的组合，忽略 AltGr', () => {
+    const capture = new HotkeyCapture()
+    capture.down(key)
+    expect(capture.up({ ...key, altKey: false })).toBe('AltRight')
+    capture.down({ ...key, code: 'ControlLeft', altKey: false, ctrlKey: true })
+    capture.down({ ...key, ctrlKey: true })
+    expect(capture.up({ ...key, code: 'ControlLeft', ctrlKey: false })).toBe('Control+AltRight')
+    capture.down(key)
+    capture.down({ ...key, getModifierState: () => true })
+    expect(capture.up(key)).toBeUndefined()
+  })
+  it('组合键匹配且松开主键或组成修饰键均结束，不响应无关按键', () => {
+    expect(matches({ ...key, code: 'KeyV', altKey: false, ctrlKey: true, shiftKey: true }, 'Control+Shift+KeyV')).toBe(true)
+    expect(releasesBinding('KeyV', 'Control+Shift+KeyV')).toBe(true)
+    expect(releasesBinding('ControlLeft', 'Control+Shift+KeyV')).toBe(true)
+    expect(releasesBinding('ShiftRight', 'Control+Shift+KeyV')).toBe(true)
+    expect(releasesBinding('AltRight', 'Control+Shift+KeyV')).toBe(false)
+  })
   it('只匹配右 Alt，忽略重复、输入法组合和 AltGr', () => {
     expect(matches(key, 'AltRight')).toBe(true)
     expect(matches({ ...key, code: 'AltLeft' }, 'AltRight')).toBe(false)

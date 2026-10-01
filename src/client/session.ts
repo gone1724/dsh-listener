@@ -53,7 +53,7 @@ export class VoiceSession {
             if (!this.finishSent || typeof message.text !== 'string') throw new Error('Unexpected final')
             const text = message.text
             this.cancel()
-            this.final(text)
+            if (text.trim()) this.final(text)
           } else if (message.type === 'error') fail(typeof message.message === 'string' ? message.message : '识别失败')
           else throw new Error('Unknown voice event')
         } catch { fail('语音服务响应无效') }
@@ -91,7 +91,7 @@ export class VoiceSession {
       this.finishing = true
       clearTimeout(this.timer)
       this.timer = setTimeout(() => this.fail('等待识别结果超时'), 20000)
-      if (!this.totalBytes) { this.fail('没有采集到音频'); return }
+      if (!this.totalBytes) { this.cancel(); return }
       this.flushFinish()
     } catch (error) { if (this.generation === run) this.fail(error instanceof Error ? error.message : '停止录音失败') }
   }

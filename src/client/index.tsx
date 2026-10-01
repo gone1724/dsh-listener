@@ -8,7 +8,7 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { defaults, validatePreferences, workspaceFromHost, VERSION, type Preferences } from '../shared.ts'
 import { settings } from './settings.ts'
-import { HotkeyGesture, keyBinding, matches } from './hotkey.ts'
+import { HotkeyCapture, HotkeyGesture, matches, releasesBinding } from './hotkey.ts'
 import { appendTranscript } from './draft.ts'
 import { VoiceSession } from './session.ts'
 
@@ -46,7 +46,7 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
     const { input, inputActions } = latest.current
     const result = appendTranscript(inputActions, input, text, start.current.autoSend, start.current.revision)
     if (result === 'blocked') { setPending(text); setNotice('输入框暂不可编辑，识别文字已保留') }
-    else if (result === 'empty') setNotice('没有识别到语音')
+    else if (result === 'empty') setNotice('')
     else if (result === 'edited') setNotice('草稿已编辑，语音已追加，请手动发送')
     else setNotice(result === 'sent' ? '已提交发送' : '语音已追加')
   }))
@@ -76,11 +76,11 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
       if (owner && owner !== session && owner.busy()) return
       event.preventDefault()
       if (event.repeat) return
-      pressedCode = event.code
+      pressedCode = latest.current.config.hotkey
       gesture.down()
     }
     const up = (event: KeyboardEvent) => {
-      if (event.code !== pressedCode || !pressedCode) return
+      if (!pressedCode || !releasesBinding(event.code, pressedCode)) return
       event.preventDefault(); pressedCode = ''; gesture.up()
     }
     const cancel = () => {
@@ -142,13 +142,14 @@ function VoiceSettings() {
   const [error, setError] = useState('')
   const [available, setAvailable] = useState(false)
   const [latestVersion, setLatestVersion] = useState('')
+  const [managementMessage, setManagementMessage] = useState('')
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
   useEffect(() => { void settings.refresh().catch(error => setError(error.message)) }, [])
   useEffect(() => { if (saved && !dirty.current) { setForm(saved); setRevision(saved.revision) } }, [saved])
   useEffect(() => {
     if (!capture) return
-    let modifier = ''
+    const recorder = new HotkeyCapture()
     const choose = (binding: string) => {
       try { validatePreferences({ ...defaults, hotkey: binding }) }
       catch { setMessage('请选择字母、数字、空格、F1–F12 或修饰键组合'); return }
@@ -158,23 +159,26 @@ function VoiceSettings() {
       event.preventDefault(); event.stopImmediatePropagation()
       if (event.code === 'Escape') { setCapture(false); return }
       if (event.repeat || event.isComposing) return
+      const binding = recorder.down(event)
       if (event.getModifierState('AltGraph')) { setMessage('AltGr 用于字符输入，请选择其他快捷键'); return }
-      if (event.code.startsWith('Control') || event.code.startsWith('Shift') || event.code.startsWith('Meta')) { modifier = event.code; return }
-      const binding = keyBinding(event)
-      modifier = ''; choose(binding)
+      if (binding) choose(binding)
     }
-    const keyup = (event: KeyboardEvent) => { if (event.code === modifier) { event.preventDefault(); event.stopImmediatePropagation(); choose(modifier) } }
+    const keyup = (event: KeyboardEvent) => {
+      event.preventDefault(); event.stopImmediatePropagation()
+      const binding = recorder.up(event)
+      if (binding) choose(binding)
+    }
     const blur = () => setCapture(false)
     window.addEventListener('keydown', keydown, true); window.addEventListener('keyup', keyup, true); window.addEventListener('blur', blur)
     return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', blur) }
   }, [capture])
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => { dirty.current = true; setForm(p => ({ ...p, [key]: value })) }
   const manage = (action: 'check' | 'update' | 'uninstall') => {
-    setBusy(true); setMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
+    setBusy(true); setManagementMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
     void settings.manage(action).then(result => {
-      if (action === 'check') { setAvailable(!!result.available); setLatestVersion(result.latest ?? ''); setMessage(result.available ? `发现新版 ${result.latest}` : '当前已是最新版本') }
-      else { setMessage(result.message ?? '操作已完成'); setAvailable(false) }
-    }).catch(error => { setMessage(''); setError(error.message) }).finally(() => setBusy(false))
+      if (action === 'check') { setAvailable(!!result.available); setLatestVersion(result.latest ?? ''); setManagementMessage(result.available ? `发现新版 ${result.latest}` : '当前已是最新版本') }
+      else { setManagementMessage(result.message ?? '操作已完成'); setAvailable(false) }
+    }).catch(error => { setManagementMessage(''); setError(error.message) }).finally(() => setBusy(false))
   }
   return <section className="speeker-settings" data-speeker-settings>
     <h2>语音输入</h2><p>阿里云百炼 · 实时识别并追加到草稿</p>
@@ -200,6 +204,7 @@ function VoiceSettings() {
       <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
         <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
         <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>
+      <p role="status" aria-label="更新状态">{managementMessage}</p>
     </details>
     {error && <MessageDialog message={error} onClose={() => setError('')} onSettings={() => setError('')}/>}
   </section>
