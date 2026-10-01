@@ -6,7 +6,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { defaults, validatePreferences, workspaceFromHost, type Preferences } from '../shared.ts'
+import { defaults, validatePreferences, workspaceFromHost, VERSION, type Preferences } from '../shared.ts'
 import { settings } from './settings.ts'
 import { HotkeyGesture, keyBinding, matches } from './hotkey.ts'
 import { appendTranscript } from './draft.ts'
@@ -140,6 +140,8 @@ function VoiceSettings() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [available, setAvailable] = useState(false)
+  const [latestVersion, setLatestVersion] = useState('')
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
   useEffect(() => { void settings.refresh().catch(error => setError(error.message)) }, [])
@@ -167,6 +169,13 @@ function VoiceSettings() {
     return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', blur) }
   }, [capture])
   const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => { dirty.current = true; setForm(p => ({ ...p, [key]: value })) }
+  const manage = (action: 'check' | 'update' | 'uninstall') => {
+    setBusy(true); setMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
+    void settings.manage(action).then(result => {
+      if (action === 'check') { setAvailable(!!result.available); setLatestVersion(result.latest ?? ''); setMessage(result.available ? `发现新版 ${result.latest}` : '当前已是最新版本') }
+      else { setMessage(result.message ?? '操作已完成'); setAvailable(false) }
+    }).catch(error => { setMessage(''); setError(error.message) }).finally(() => setBusy(false))
+  }
   return <section className="speeker-settings" data-speeker-settings>
     <h2>语音输入</h2><p>阿里云百炼 · 实时识别并追加到草稿</p>
     <label className="speeker-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => { setKey(e.target.value); setClearKey(false) }}/></label>
@@ -187,6 +196,11 @@ function VoiceSettings() {
       void settings.save(form, revision, key.trim() || undefined, clearKey).then(value => { dirty.current = false; setForm(value); setRevision(value.revision); setKey(''); setClearKey(false); setMessage('设置已保存') }).catch(error => setError(error.message)).finally(() => setBusy(false))
     }}>{busy ? '保存中…' : '保存'}</button><button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button></div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
+    <details open><summary>插件管理 · v{VERSION}</summary><p>卸载保留设置与密钥。更新后如需重启，会显示提示。</p>
+      <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
+        <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
+        <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>
+    </details>
     {error && <MessageDialog message={error} onClose={() => setError('')} onSettings={() => setError('')}/>}
   </section>
 }

@@ -26,9 +26,15 @@ importers:
       '@deepseek-ai/dsh-credentials':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.4))
+      '@deepseek-ai/dsh-hmr':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(acf33c6a147b9f2be564086f152da09e)
       '@deepseek-ai/dsh-host-webserver':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-plugin-manager':
+        specifier: 0.2.0-rc.2
+        version: 0.2.0-rc.2(e2feab0f8dc72d84d677efa8a24873fd)
       '@deepseek-ai/dsh-settings':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(836b22df0e7e5f7a9240cc4e2ca4a3dd)

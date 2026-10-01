@@ -1,6 +1,6 @@
 {
   "name": "dsh-speeker",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Cloud streaming voice input for DeepSeek Harness using Alibaba Cloud Model Studio",
   "license": "MIT",
   "type": "module",
@@ -36,7 +36,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test && pnpm build",
-    "verify:package": "pnpm pack --out output/dsh-speeker-0.2.1.tgz && node scripts/verify-package.mjs",
+    "verify:package": "pnpm pack --out output/dsh-speeker-0.3.0.tgz && node scripts/verify-package.mjs",
     "prepack": "pnpm build"
   },
   "dsh": {
@@ -53,6 +53,8 @@
     }
   },
   "dependencies": {
+    "@deepseek-ai/dsh-hmr": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-plugin-manager": "0.2.0-rc.2",
     "ws": "^8.18.3"
   },
   "peerDependencies": {

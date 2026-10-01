@@ -6,6 +6,7 @@ vi.mock('../src/client/audio.ts', () => ({ Recording: class {
   async stop() { audio.stops++; audio.chunks.at(-1)?.(new ArrayBuffer(2)) }
   async cancel() { audio.cancels++ }
 } }))
+vi.mock('../src/client/channel.ts', () => ({ HttpVoiceChannel: class { constructor() { return new WebSocket('ws://localhost') } } }))
 import { VoiceSession } from '../src/client/session.ts'
 import { MAX_AUDIO_BYTES } from '../src/shared.ts'
 class Socket {
@@ -33,7 +34,7 @@ it.each([401, 403, 200])('WebSocket 失败时依据本地 HTTP %s 定位，而�
   Socket.instances[0].onerror?.(); Socket.instances[0].onclose?.()
   await Promise.resolve(); await Promise.resolve()
   expect(session.getSnapshot().phase).toBe('error')
-  expect(session.getSnapshot().message).toContain(status === 200 ? 'WebSocket 握手失败' : `HTTP ${status}`)
+  expect(session.getSnapshot().message).toContain(status === 200 ? '音频上传通道不可用' : `HTTP ${status}`)
   expect(audio.cancels).toBeGreaterThan(0)
 })
 it('权限申请时松键取消，不会在迟到授权后开始持续录音', async () => {

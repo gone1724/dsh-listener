@@ -9,6 +9,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { WebSocket, WebSocketServer } from 'ws'
 import { BASE, defaults, validatePreferences, type Preferences, type SettingsView } from './shared.ts'
 import { BailianTask } from './host/bailian.ts'
+import { mountHttpChannel } from './host/http-channel.ts'
+import { mountManagement } from './host/management.ts'
 
 export const name = 'dsh-speeker'
 export const inject = ['webServer', 'connection', 'credentials', 'settings']
@@ -49,6 +51,9 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
     writable: ctx.settings.writable, revision: descriptor()?.revision ?? 0,
   })
   ctx.effect(() => ctx.settings.configure({ auto: false }))
+  const channel = mountHttpChannel(ctx, preferences, keyRef)
+  ctx.effect(() => channel.dispose)
+  ctx.effect(() => mountManagement(ctx, () => channel.active() + tasks.size))
 
   ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: `${BASE}/config`, handler: async (req, res) => {
     const admission = ctx.connection.admit(req)

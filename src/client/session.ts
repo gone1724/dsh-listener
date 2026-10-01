@@ -1,5 +1,6 @@
 import { BASE, MAX_AUDIO_BYTES, MAX_BUFFER_BYTES } from '../shared.ts'
 import { Recording } from './audio.ts'
+import { HttpVoiceChannel } from './channel.ts'
 
 export interface SessionState { phase: 'idle' | 'requesting' | 'recording' | 'finishing' | 'error'; preview: string; message: string }
 /** Serial microphone owner: asynchronous grants, worklet tail and cloud task are one lifetime. */
@@ -8,7 +9,7 @@ export class VoiceSession {
   private listeners = new Set<() => void>()
   private generation = 0
   private capture?: Recording
-  private socket?: WebSocket
+  private socket?: HttpVoiceChannel
   private ready = false
   private queue: ArrayBuffer[] = []
   private queuedBytes = 0
@@ -33,9 +34,7 @@ export class VoiceSession {
     const capture = new Recording(chunk => { if (this.generation === run) this.audio(chunk) }, () => fail('麦克风中断，录音已取消'))
     this.capture = capture
     try {
-      const url = new URL(`${BASE}/stream`, window.location.href)
-      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-      const socket = new WebSocket(url)
+      const socket = new HttpVoiceChannel()
       this.socket = socket
       this.timer = setTimeout(() => fail('连接或麦克风授权超时，已取消'), 15000)
       socket.onmessage = event => {
@@ -67,7 +66,7 @@ export class VoiceSession {
         void fetch(`${BASE}/config`, { credentials: 'same-origin', signal: AbortSignal.timeout(3000) }).then(response => {
           if (response.status === 401) fail('Harness 登录已失效（HTTP 401），请关闭并重新打开 Desktop 页面。')
           else if (response.status === 403) fail('Harness 拒绝当前页面来源（HTTP 403），请从 Desktop 自带页面打开。')
-          else if (response.ok) fail('语音设置接口正常，但 Harness 本地 WebSocket 握手失败。请更新插件并完全重启 Desktop；若仍失败，请检查 Desktop 对 /dsh-speeker/stream 的 WebSocket 转发。尚未连接百炼。')
+          else if (response.ok) fail('语音设置接口正常，但 Harness 音频上传通道不可用。请更新插件并重新打开 Desktop 页面。')
           else fail(`Harness 语音接口不可用（HTTP ${response.status}），请检查插件是否启用并重启 Desktop。`)
         }).catch(() => fail('无法访问 Harness 本地语音接口，请检查 Desktop 内核是否运行，并重启 Desktop。'))
       }
@@ -105,7 +104,7 @@ export class VoiceSession {
     this.socket = undefined
     if (socket) {
       socket.onmessage = null; socket.onclose = null; socket.onerror = null
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'cancel' }))
+      if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'cancel' }))
       socket.close()
     }
     this.queue = []; this.queuedBytes = 0
@@ -117,7 +116,7 @@ export class VoiceSession {
     if (remaining <= 0) { if (this.state.phase === 'recording') void this.finish(); return }
     if (chunk.byteLength > remaining) chunk = chunk.slice(0, remaining)
     this.totalBytes += chunk.byteLength
-    if (this.ready && this.socket?.readyState === WebSocket.OPEN) {
+    if (this.ready && this.socket?.readyState === 1) {
       if (this.socket.bufferedAmount > MAX_BUFFER_BYTES) { this.fail('上传网络过慢，已取消'); return }
       this.socket.send(chunk)
     } else {
@@ -128,7 +127,7 @@ export class VoiceSession {
     if (this.totalBytes === MAX_AUDIO_BYTES && this.state.phase === 'recording') void this.finish()
   }
   private flushFinish(): void {
-    if (this.finishing && this.ready && !this.finishSent && this.socket?.readyState === WebSocket.OPEN) {
+    if (this.finishing && this.ready && !this.finishSent && this.socket?.readyState === 1) {
       this.finishSent = true
       this.socket.send(JSON.stringify({ type: 'finish' }))
     }

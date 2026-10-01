@@ -1,6 +1,6 @@
 # dsh-speeker
 
-当前插件版本：**0.2.1**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+当前插件版本：**0.3.0**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
 
 DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开停止；音频实时上传至阿里云百炼，最终识别文字追加到当前会话草稿，默认不发送。
 
@@ -30,7 +30,7 @@ dsh web
 ```powershell
 dsh plugin --profile web add github:gone1724/dsh-listener
 # 固定版本：
-dsh plugin --profile web add github:gone1724/dsh-listener#v0.2.1
+dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.0
 dsh web
 ```
 
@@ -72,11 +72,21 @@ dsh plugin --profile web remove dsh-speeker
 
 首次麦克风授权和设备初始化存在等待时间，授权前的声音无法采集；绿色按钮表示已经开始收音。Host 从远程机器提供页面时必须使用 HTTPS；localhost 是可用的安全上下文。
 
+## 更新与卸载
+
+在 **设置 → 语音输入 → 插件管理** 中：
+
+- **检查更新**：查询 `gone1724/dsh-listener` 的正式版本标签，验证版本与安装清单。
+- **更新**：发现新版后启用，下载并安装指定发布标签，复用 Harness 官方插件管理器。
+- **一键卸载**：仅卸载 `dsh-speeker`，保留设置、密钥与已有草稿。录音期间不允许更新或卸载。
+
+插件管理使用当前 profile；宿主已有管理服务时复用，否则在应用根上下文挂载官方管理器。没有 HMR 时会启用仅监听 profile 配置的官方 HMR，支持配置更新和热卸载，不监听其他工作区源码。已安装包的版本替换在 Harness `0.2.0-rc.2` 中仍会返回 `restart-required`，界面明确提示重启。检查更新不会自动下载，也不会自动执行卸载。
+
 ## 实现
 
 ```text
 浏览器 getUserMedia → AudioWorklet → 单声道 16 kHz PCM16（100 ms 分块）
-  → Harness 同源且经连接鉴权的 WebSocket
+  → Harness 同源且经连接鉴权的 HTTP 二进制分块上传 / 结果长轮询
   → Host 使用凭据服务中的 API Key 连接百炼
   → run-task / task-started / binary audio / finish-task / task-finished
   → 汇总最终句子 → InputActions.insertText → 可选 InputActions.submit
@@ -107,7 +117,7 @@ pnpm verify:package
 
 `src/index.ts` 为 Host；`src/host/bailian.ts` 为百炼协议；`src/client/` 为界面、采集和交互；`tests/` 包含快捷键、草稿、取消、PCM 编码及本机 WebSocket 集成测试。
 
-本机 mock 不需要 API Key。真实百炼识别准确率、真实计费和 AltGr 各布局仍需人工验收；mock 通过不表示已经完成云端验收。安装包应同时包含 `lib/index.js`、`lib/client.js`、`lib/pcm-worklet.js`、`cordis.patch.yml` 和许可文件。
+本机 mock 不需要 API Key。v0.3.0 默认本地 HTTP 通道，不依赖 Desktop 转发自定义 WebSocket；Host 到百炼仍为实时 WebSocket。旧 `/dsh-speeker/stream` 路由仅保留兼容。真实百炼识别准确率、真实计费和 AltGr 各布局仍需人工验收；mock 通过不表示已经完成云端验收。安装包应同时包含 `lib/index.js`、`lib/client.js`、`lib/pcm-worklet.js`、`cordis.patch.yml` 和许可文件。
 
 本次运行记录与人工验收步骤见 [验证记录](docs/VALIDATION.md)。
 
