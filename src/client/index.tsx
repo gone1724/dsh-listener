@@ -259,7 +259,7 @@ function VoiceSettings() {
     }).catch(error => { setManagementMessage(''); setProgress(null); setError(error.message) }).finally(() => { setBusy(false); setUpdating(false) })
   }
   return <section className="speeker-settings" data-speeker-settings>
-    <h2>语音输入</h2><p>阿里云百炼 · 实时识别并追加到草稿</p>
+    <h2>语音输入</h2><p>dsh-listener: 轻量化云端实时识别语音</p>
     <label className="speeker-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => setKey(e.target.value)}/></label>
     <label className="speeker-field"><span>地域</span><select value={form.region} onChange={e => update('region', e.target.value as Preferences['region'])}><option value="beijing">北京</option><option value="singapore">新加坡</option></select></label>
     <label className="speeker-field"><span>Workspace ID</span><div><input aria-label="Workspace ID" aria-describedby="speeker-workspace-hint" value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {

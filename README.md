@@ -1,6 +1,6 @@
 # dsh-speeker
 
-当前插件版本：**0.3.5**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+当前插件版本：**0.3.6**。更新内容见 [CHANGELOG.md](CHANGELOG.md)。
 
 DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开停止；音频实时上传至阿里云百炼，最终识别文字追加到当前会话草稿，默认不发送。
 
@@ -16,7 +16,7 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 2. 在添加插件的输入框中粘贴以下地址，然后确认安装：
 
    ```text
-   github:gone1724/dsh-listener#v0.3.5
+   github:gone1724/dsh-listener#v0.3.6
    ```
 
 3. 安装完成后，完全退出并重新打开 Desktop。
@@ -29,7 +29,7 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 
 ```powershell
 npm install -g @deepseek-ai/dsh@0.2.0-rc.2
-dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.5
+dsh plugin --profile web add github:gone1724/dsh-listener#v0.3.6
 dsh web
 ```
 
@@ -92,7 +92,7 @@ dsh web
 - **下载来源**：默认 GitHub 官方下载；国内网络可改选 GitHub 镜像下载，并填入 HTTPS 镜像网址前缀。
 - **一键卸载**：仅卸载 `dsh-speeker`，保留设置、密钥与已有草稿。录音期间不允许更新或卸载。
 
-镜像默认预填：`https://gh-proxy.org`（可填写其他兼容地址；已有自定义地址保留）。插件按“镜像前缀 / 完整 GitHub URL”拼接请求；镜像需同时支持 GitHub API、Raw 文件和 `.tar.gz` 源码包，格式见 [GH-Proxy 使用说明](https://gh-proxy.com/docs/github-accelerator)。例如：`https://你的镜像域名/https://github.com/gone1724/dsh-listener/archive/refs/tags/v0.3.5.tar.gz`。仅填写镜像前缀，不要粘贴整个下载链接。
+镜像默认预填：`https://gh-proxy.org`（可填写其他兼容地址；已有自定义地址保留）。插件按“镜像前缀 / 完整 GitHub URL”拼接请求；镜像需同时支持 GitHub API、Raw 文件和 `.tar.gz` 源码包，格式见 [GH-Proxy 使用说明](https://gh-proxy.com/docs/github-accelerator)。例如：`https://你的镜像域名/https://github.com/gone1724/dsh-listener/archive/refs/tags/v0.3.6.tar.gz`。仅填写镜像前缀，不要粘贴整个下载链接。
 
 检查更新与更新立即使用表单中的下载来源；下载来源和有效镜像网址自动保存，无需点击保存。官方模式隐藏镜像输入框，但保留已有地址，切回镜像或重新打开设置后继续显示。官方模式从 GitHub 下载固定发布标签的压缩包；镜像模式通过镜像查询版本、验证清单，并将固定标签的压缩包交给官方插件管理器安装，不直连 GitHub 进行上述请求。检查请求每次最多等待 30 秒；镜像不可用时明确报错，不自动回退官方来源。镜像不代理百炼音频或 API Key，依赖包仍由宿主配置的 npm registry 下载。
 
