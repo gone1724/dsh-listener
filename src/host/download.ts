@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { open, readFile, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -10,7 +10,7 @@ const LIMIT = 32 * 1024 * 1024
 function verifyArchive(bytes: Buffer, version: string): void {
   let tar: Buffer
   try { tar = gunzipSync(bytes, { maxOutputLength: 64 * 1024 * 1024 }) }
-  catch { throw new Error('下载包不是有效的 gzip 源码包，请检查镜像是否返回了错误页面') }
+  catch { throw new Error('下载包不是有效的 gzip 安装包，请检查镜像是否返回了错误页面') }
   const files = new Map<string, Buffer>()
   for (let offset = 0; offset + 512 <= tar.length;) {
     const header = tar.subarray(offset, offset + 512)
@@ -25,13 +25,13 @@ function verifyArchive(bytes: Buffer, version: string): void {
   if (!entry) throw new Error('下载包缺少插件清单，请检查镜像下载地址')
   const manifest = JSON.parse(files.get(entry)!.toString())
   const root = entry.slice(0, -'package.json'.length)
-  if (manifest.name !== 'dsh-speeker' || manifest.version !== version) throw new Error('下载包与目标插件版本不一致')
+  if (manifest.name !== 'dsh-listener' || manifest.version !== version) throw new Error('下载包与目标插件版本不一致')
   for (const file of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cordis.patch.yml']) {
     if (!files.get(root + file)?.length) throw new Error(`下载包缺少 ${file}`)
   }
 }
-export async function downloadArchive(url: string, version: string, progress: (value: UpdateProgress) => void, fetcher: typeof fetch = fetch) {
-  const path = join(tmpdir(), `dsh-speeker-${randomUUID()}.tgz`)
+export async function downloadArchive(url: string, version: string, progress: (value: UpdateProgress) => void, fetcher: typeof fetch = fetch, integrity?: string) {
+  const path = join(tmpdir(), `dsh-listener-${randomUUID()}.tgz`)
   const file = await open(path, 'wx')
   const dispose = () => unlink(path)
   try {
@@ -55,7 +55,9 @@ export async function downloadArchive(url: string, version: string, progress: (v
     } finally { await reader.cancel().catch(() => {}); reader.releaseLock() }
     await file.close()
     if (total && total !== received) throw new Error('安装包下载不完整，请重试')
-    verifyArchive(await readFile(path), version)
+    const bytes = await readFile(path)
+    if (integrity && `sha512-${createHash('sha512').update(bytes).digest('base64')}` !== integrity) throw new Error('安装包完整性校验失败，请重试或更换 npm 下载来源')
+    verifyArchive(bytes, version)
     return { path, dispose }
   } catch (error) {
     await file.close().catch(() => {})

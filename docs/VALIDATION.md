@@ -3,7 +3,7 @@
 ## v0.3.7 插件详情设置入口
 
 - `pnpm check` 通过：51 项测试、TypeScript 检查及 Host/Client 构建。
-- 对照本地 Harness 0.2.0-rc.2 的插件页面源码确认 `plugins.bundle.config` 为包名 keyed 插槽，详情页传入 `view: 'page'`；语音表单以 `dsh-speeker` 为 key 注册。
+- 对照本地 Harness 0.2.0-rc.2 的插件页面源码确认 `plugins.bundle.config` 为包名 keyed 插槽，详情页传入 `view: 'page'`；语音表单以 `dsh-listener` 为 key 注册。
 - 管理接口回归覆盖 `bundle-in-use` 返回结果及抛出对象两种形式，均显示中文、进度为 error，并可重试；成功替换仍返回宿主的重启要求。
 - 尚未在用户 Desktop 上验证插件图标点击后的实际页面，也未验证真实版本替换或无重启加载新版。
 
@@ -46,7 +46,7 @@
 - 客户端异步权限申请取消、连接等待缓冲、残余音频先于结束指令、断线取消及 120 秒上限正常收尾。
 - 快捷键长按/点按状态机、重复事件、左右 Alt 区分、AltGr 排除、按住期间改变模式。
 - 草稿追加、引用芯片坐标、自动发送动作顺序、编辑后抑制自动发送、锁定时保留结果。
-- 用 `dsh plugin --profile web add F:/dsh-speeker` 安装到独立测试 profile 并启动，Client 模块能实际激活。
+- 用 `dsh plugin --profile web add .` 从本地源码目录安装到独立测试 profile 并启动，Client 模块能实际激活。
 - 实际 Harness 设置页：默认模型、右 Alt、长按、自动发送关闭；API Key 保存成功且不回传密钥；刷新页面后配置仍可用。
 - 实际 Chromium 页面：合成麦克风音频通过真实 AudioWorklet 产生 242 个 PCM 块（774400 字节）；麦克风录音按钮显示绿色，停止时释放轨道。
 - 浏览器 mock 最终结果将 `已有草稿。` 更新为 `已有草稿。这是流式语音测试。`，没有自动发送。

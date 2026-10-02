@@ -1,10 +1,22 @@
 # 设置入口与更新机制
 
+## 0.3.10 恢复名称
+
+插件统一使用 `dsh-listener`，更新查询为 `https://registry.npmjs.org/dsh-listener/latest`。旧包安装不会自动更名，请在 Desktop 停用旧插件后安装 `dsh-listener` 并重启，重新配置 API Key 和设置。凭据变量改为 `DSH_LISTENER_API_KEY`，接口、配置命名空间与客户端标识也随包名同步更新。
+
+## 0.3.9 统一 npm 更新
+
+安装与插件内“检查更新”统一使用 npm 的 `latest`。检查请求为 `https://registry.npmjs.org/dsh-listener/latest`，不再查询 GitHub 标签，也不再区分 beta / 正式渠道。检查无需启动官方管理器；点击更新时重新查询并固定版本，下载 npm `.tgz`，验证 SHA-512、包名、版本及构建文件后调用 `installBundle`。官方管理器的版本替换和重启限制仍适用。
+
+下载来源为 npm 官方或 npm registry 镜像，默认镜像 `https://registry.npmmirror.com`；镜像按 registry 路径请求，不拼接完整 GitHub URL。旧默认 GitHub 代理自动迁移，其他自定义地址应改为 npm registry。镜像可能延迟同步，检查最新发布优先使用官方来源。
+
+0.3.8 及更早版本仍执行旧 GitHub 更新逻辑，0.3.9 查询旧 npm 包；这些版本均需在 Desktop 插件管理中安装 `dsh-listener` 并重启一次。下文是历史版本记录。
+
 ## v0.3.7 插件详情设置入口
 
-完整语音设置接入宿主 `plugins.bundle.config`，以包名 `dsh-speeker` 为 key，显示在插件列表中本插件的详情设置页。与 dshmarket 使用同一插槽机制，不向插件卡片摘要塞入整个表单。另注册 `settings.plugins.tab` 的“语音输入”标签，并保留右键麦克风弹窗；移除单独的 `settings.section` 导航项。
+完整语音设置接入宿主 `plugins.bundle.config`，以包名 `dsh-listener` 为 key，显示在插件列表中本插件的详情设置页。与 dshmarket 使用同一插槽机制，不向插件卡片摘要塞入整个表单。另注册 `settings.plugins.tab` 的“语音输入”标签，并保留右键麦克风弹窗；移除单独的 `settings.section` 导航项。
 
-入口包含密钥、录音、快捷键、下载来源、检查更新、更新和卸载，复用同一表单及接口。插件运行时可发起更新，更新直接调用官方 `installBundle`，不先卸载或禁用自身；安装返回 `restart-required` 时仍需完全退出并重开 Desktop。设置热生效与代码版本的无重启替换是不同能力，当前未实现后者。
+入口包含密钥、录音、快捷键、下载来源、检查更新和更新，复用同一表单及接口。插件运行时可发起更新，更新直接调用官方 `installBundle`；安装返回 `restart-required` 时仍需完全退出并重开 Desktop。设置热生效与代码版本的无重启替换是不同能力，当前未实现后者。
 
 `bundle-in-use` 表示宿主卸载配置层后仍发现该 bundle 的运行条目，不能当作安装成功。插件自带管理接口将该错误转为中文，并将更新进度保留为失败；Desktop 自身的 JSON 错误展示不由本插件控制。若需要禁用后操作，应使用 Desktop 自带插件管理入口，禁用后本插件的设置入口随之消失。
 
@@ -28,7 +40,7 @@
 
 ## 0.3.0 插件管理与传输
 
-设置页现提供“检查更新”“更新”“一键卸载”。查询固定 GitHub 仓库的正式标签并验证包名/版本；更新、卸载通过 Harness 官方包管理器的 `installBundle` / `removeBundle`，使用 profile 锁和官方 pnpm 调用。管理器不足时在应用根上下文挂载官方服务，避免插件卸载中途取消自身的包操作；配置 HMR 只监听 profile，不监听其他源码。录音中禁止版本替换/卸载。
+设置页提供“检查更新”和“更新”。查询固定 GitHub 仓库的正式标签并验证包名/版本；更新通过 Harness 官方包管理器的 `installBundle`，使用 profile 锁和官方 pnpm 调用。管理器不足时在应用根上下文挂载官方服务，保证版本替换期间管理器仍可运行；配置 HMR 只监听 profile，不监听其他源码。录音中禁止版本替换。
 
 `0.2.0-rc.2` 对已安装版本的替换仍返回 `restart-required`，界面直接显示重启要求。热配置与热卸载可以生效，版本替换不宣称一定无需重启。没有自建远程代码下载执行器，也不调用任意 shell。
 
@@ -58,7 +70,7 @@ Workspace ID 支持直接粘贴百炼域名或完整 API Host，自动提取地�
 
 本地安装不等于源码文件自动监听。如果 Desktop 将本地包复制到 profile 中，修改本仓库的 `lib/` 不会修改安装副本；需要在 Desktop 的插件管理中重新安装同一本地目录。若是链接安装，也需要宿主 HMR 监控真实路径。源码修改后先执行 `pnpm build`；未启用 HMR 时重启 Desktop，以加载新的 Host 和 Client。
 
-首次使用这次修复，请重新安装 `F:\dsh-speeker` 并重启 Desktop。更新表单入口后，普通设置修改不再需要重新安装或重启。
+首次使用这次修复，请重新安装本地插件源码目录并重启 Desktop。更新表单入口后，普通设置修改不再需要重新安装或重启。
 
 ## 调研来源
 

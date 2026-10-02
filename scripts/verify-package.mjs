@@ -18,6 +18,12 @@ for (const name of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cord
 assert.match(files.get('package/lib/client.js').toString(), /window\.__ModuleLoader__\.load/)
 assert.match(files.get('package/lib/pcm-worklet.js').toString(), /registerProcessor/)
 const manifest = JSON.parse(files.get('package/package.json').toString())
+assert.equal(manifest.name, 'dsh-listener', 'Plugin package must use its intended name')
+assert.match(files.get('package/cordis.patch.yml').toString(), /name: dsh-listener/)
+assert.match(files.get('package/lib/client.js').toString(), /id: "dsh-listener"/)
+for (const [name, bytes] of files) {
+  assert.doesNotMatch(bytes.toString(), /speeker/i, `Old plugin name remains in ${name}`)
+}
 assert.equal(manifest.exports['./package.json'], './package.json', 'Harness must be able to resolve plugin display metadata')
 assert.equal(manifest.name, sourceManifest.name)
 assert.equal(manifest.version, sourceManifest.version)

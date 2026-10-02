@@ -14,7 +14,7 @@ it('禁用本地 WebSocket 的真实 HTTP 服务仍可流式上传、按顺序�
     return { sendAudio: b => { sequence.push('audio'); buffers.push(b) }, finish: () => { sequence.push('finish'); emit({ type: 'final', text: '流式识别成功' }) }, cancel: () => sequence.push('cancel') }
   }
   const ctx: any = { credentials: { resolve: async () => ({ value: 'test-placeholder' }) }, connection: { admit: () => ({ peer: {} }) }, webServer: { register: (route: any) => { handler = route.handler; return () => {} } } }
-  const channel = mountHttpChannel(ctx, () => defaults, credentialRef('DSH_SPEEKER_API_KEY'), factory)
+  const channel = mountHttpChannel(ctx, () => defaults, credentialRef('DSH_LISTENER_API_KEY'), factory)
   const server = createServer((req, res) => { void handler(req, res) })
   server.on('upgrade', (_req, socket) => socket.destroy())
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
@@ -46,6 +46,6 @@ it.each([401, 403])('HTTP %s 会阻止创建任务，错误不被吞成泛化握
   try {
     const message = await new Promise<string>(resolve => { client.onmessage = e => resolve(JSON.parse(e.data).message) })
     expect(message).toContain(`HTTP ${status}`)
-    expect(fetcher).toHaveBeenCalledExactlyOnceWith('/dsh-speeker/channel?action=start', expect.objectContaining({ method: 'POST', credentials: 'same-origin' }))
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith('/dsh-listener/channel?action=start', expect.objectContaining({ method: 'POST', credentials: 'same-origin' }))
   } finally { client.close(); vi.unstubAllGlobals() }
 })

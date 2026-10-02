@@ -26,8 +26,8 @@ export const settings = {
     if (!response.ok) throw new Error('无法读取更新进度')
     return response.json()
   },
-  manage: async (action: 'check' | 'update' | 'uninstall', source?: UpdateSource): Promise<{ current?: string; latest?: string; available?: boolean; message?: string; application?: string }> => {
-    const query = new URLSearchParams({ action, ...(action === 'uninstall' ? {} : validateUpdateSource(source ?? {})) })
+  manage: async (action: 'check' | 'update', source?: UpdateSource): Promise<{ current?: string; latest?: string; available?: boolean; message?: string; application?: string }> => {
+    const query = new URLSearchParams({ action, ...validateUpdateSource(source ?? {}) })
     const response = await fetch(`${BASE}/manage?${query}`, { method: 'POST', credentials: 'same-origin' })
     const result = await response.json()
     if (!response.ok) throw new Error(result.error ?? '插件管理失败')

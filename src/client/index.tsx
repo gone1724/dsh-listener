@@ -16,18 +16,20 @@ export const inject = ['slots']
 const sessions = new Set<VoiceSession>()
 let owner: VoiceSession | undefined
 const style = `
-.speeker-button{border:0;border-radius:8px;padding:7px;display:inline-flex;align-items:center;gap:5px;color:#858585;background:transparent;cursor:pointer;font:inherit}
-.speeker-button:hover{background:var(--dsw-alias-bg-layer-2,#8882)}.speeker-button:disabled{opacity:.5;cursor:default}
-.speeker-button[data-recording=true]{color:#16a34a;background:#16a34a18}.speeker-button:focus-visible,.speeker-settings input:focus-visible,.speeker-settings select:focus-visible{outline:2px solid #16a34a;outline-offset:2px}
-.speeker-control{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.speeker-status{font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.speeker-settings{max-width:480px;padding:12px;color:inherit;font:inherit;font-size:13px}.speeker-settings h2{margin:0 0 6px;font-size:16px}.speeker-settings p{line-height:1.5;opacity:.8;margin:8px 0}.speeker-settings details{margin:10px 0;font-size:12px;opacity:.85}
-.speeker-field{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:16px 0}.speeker-field input:not([type=checkbox]),.speeker-field select{box-sizing:border-box;width:100%;padding:9px 10px;color:inherit;background:var(--dsw-alias-bg-layer-2,#8881);border:1px solid #8885;border-radius:7px;font:inherit}.speeker-field input[type=checkbox]{width:18px;height:18px;accent-color:#16a34a}
-.speeker-actions{display:flex;gap:10px;margin-top:20px}.speeker-action{padding:8px 14px;border:1px solid #8885;border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit}.speeker-primary{background:#15803d;color:white;border-color:#15803d}.speeker-action:disabled{opacity:.5;cursor:default}
-.speeker-dialog{padding:0;border:1px solid #8885;border-radius:12px;max-width:min(680px,calc(100vw - 32px));max-height:85vh;color:inherit;background:var(--dsw-alias-bg-layer-1,Canvas);overflow:auto}.speeker-dialog::backdrop{background:#0006}.speeker-dialog-close{display:flex;justify-content:flex-end;padding:12px 16px 0}
-.speeker-settings .speeker-field{grid-template-columns:105px 1fr;gap:8px;margin:10px 0}.speeker-settings .speeker-field input:not([type=checkbox]),.speeker-settings .speeker-field select{padding:6px 8px;font-size:13px}.speeker-settings .speeker-action{padding:5px 10px;font-size:13px}.speeker-settings .speeker-actions{margin-top:12px}.speeker-popup{width:min(380px,calc(100vw - 48px));padding:16px;font-size:13px}.speeker-popup h2{font-size:16px;margin:0 0 10px}.speeker-popup p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.speeker-popup-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-.speeker-progress{width:100%;height:8px;accent-color:#16a34a}
-.speeker-shortcut{display:flex;align-items:center;gap:8px}.speeker-shortcut input{min-width:0;flex:1}.speeker-shortcut button{flex:none}.speeker-settings .speeker-hint{font-size:12px;margin:5px 0 0}
-@media(max-width:500px){.speeker-field{grid-template-columns:1fr;gap:6px}.speeker-settings{padding:12px}}
+.listener-button{border:0;border-radius:8px;padding:7px;display:inline-flex;align-items:center;gap:5px;color:#858585;background:transparent;cursor:pointer;font:inherit}
+.listener-button:hover{background:var(--dsw-alias-bg-layer-2,#8882)}.listener-button:disabled{opacity:.5;cursor:default}
+.listener-button[data-recording=true]{color:#16a34a;background:#16a34a18}.listener-button:focus-visible,.listener-settings input:focus-visible,.listener-settings select:focus-visible{outline:2px solid #16a34a;outline-offset:2px}
+.listener-control{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.listener-status{font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.listener-settings{max-width:480px;padding:12px;color:inherit;font:inherit;font-size:13px}.listener-settings h2{margin:0 0 6px;font-size:16px}.listener-settings p{line-height:1.5;opacity:.8;margin:8px 0}.listener-settings details{margin:10px 0;font-size:12px;opacity:.85}
+.listener-field{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:16px 0}.listener-field input:not([type=checkbox]),.listener-field select{box-sizing:border-box;width:100%;padding:9px 10px;color:inherit;background:var(--dsw-alias-bg-layer-2,#8881);border:1px solid #8885;border-radius:7px;font:inherit}.listener-field input[type=checkbox]{width:18px;height:18px;accent-color:#16a34a}
+.listener-actions{display:flex;gap:10px;margin-top:20px}.listener-action{padding:8px 14px;border:1px solid #8885;border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit}.listener-primary{background:#15803d;color:white;border-color:#15803d}.listener-action:disabled{opacity:.5;cursor:default}
+.listener-dialog{padding:0;border:1px solid #8885;border-radius:12px;max-width:min(680px,calc(100vw - 32px));max-height:85vh;color:inherit;background:var(--dsw-alias-bg-layer-1,Canvas);overflow:auto}.listener-dialog::backdrop{background:#0006}.listener-dialog-close{display:flex;justify-content:flex-end;padding:12px 16px 0}
+.listener-settings .listener-field{grid-template-columns:105px 1fr;gap:8px;margin:10px 0}.listener-settings .listener-field input:not([type=checkbox]),.listener-settings .listener-field select{padding:6px 8px;font-size:13px}.listener-settings .listener-action{padding:5px 10px;font-size:13px}.listener-settings .listener-actions{margin-top:12px}.listener-popup{width:min(380px,calc(100vw - 48px));padding:16px;font-size:13px}.listener-popup h2{font-size:16px;margin:0 0 10px}.listener-popup p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.listener-popup-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.listener-progress{width:100%;height:8px;accent-color:#16a34a}
+.listener-shortcut{display:flex;align-items:center;gap:8px}.listener-shortcut input{min-width:0;flex:1}.listener-shortcut button{flex:none}.listener-settings .listener-hint{font-size:12px;margin:5px 0 0}
+.listener-update-controls{display:flex;align-items:center;gap:6px;min-width:0}.listener-update-controls select{flex:1;min-width:80px}.listener-update-controls button{flex:none;white-space:nowrap}
+@media(max-width:420px){.listener-settings .listener-update-field{grid-template-columns:1fr}}
+@media(max-width:500px){.listener-field{grid-template-columns:1fr;gap:6px}.listener-settings{padding:12px}}
 `
 function Mic() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0014 0v-2M12 19v3M8 22h8"/></svg>
@@ -72,7 +74,7 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
     const down = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !document.hasFocus() || document.hidden || !button.current?.getClientRects().length) return
       // Shortcut capture in Settings must never start a recording.
-      if ((event.target as HTMLElement)?.closest?.('[data-speeker-settings], [role="dialog"]')) return
+      if ((event.target as HTMLElement)?.closest?.('[data-listener-settings], [role="dialog"]')) return
       if (!latest.current.config?.configured || !matches(event, latest.current.config.hotkey, true)) return
       if (owner && owner !== session && owner.busy()) return
       event.preventDefault()
@@ -99,18 +101,18 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
     }
   }, [sessionId, session])
   const label = state.phase === 'recording' ? '停止录音' : state.phase === 'requesting' ? '取消麦克风请求' : state.phase === 'finishing' ? '正在识别' : '开始语音输入'
-  return <div className="speeker-control">
-    <button ref={button} type="button" className="speeker-button" aria-label={label} aria-pressed={session.active()} data-recording={state.phase === 'recording'}
+  return <div className="listener-control">
+    <button ref={button} type="button" className="listener-button" aria-label={label} aria-pressed={session.active()} data-recording={state.phase === 'recording'}
       title={config?.configured ? `${label}（${config.hotkey}）${state.preview ? `：${state.preview}` : ''}；右键打开语音输入设置` : '点击配置语音输入'}
       disabled={state.phase === 'finishing' || input.phase !== 'plain'}
       onContextMenu={event => { event.preventDefault(); if (!session.busy()) setShowSettings(true) }}
       onClick={() => { if (!config?.configured) setShowSettings(true); else if (session.active()) operations.current.finish(); else operations.current.begin() }}><Mic /></button>
     {showSettings && <SettingsDialog onClose={() => setShowSettings(false)}/>}
     {(notice && !['语音已追加', '已提交发送'].includes(notice)) && <MessageDialog message={notice} onClose={() => setNotice('')} onSettings={() => { setNotice(''); setShowSettings(true) }}>
-    {pending && <><p>{pending}</p><button className="speeker-action" type="button" onClick={() => {
+    {pending && <><p>{pending}</p><button className="listener-action" type="button" onClick={() => {
       const result = appendTranscript(inputActions, latest.current.input, pending, false, 0)
       if (result !== 'blocked') { setPending(''); setNotice('语音已追加') }
-    }}>追加识别文字</button><button className="speeker-action" type="button" onClick={() => { void (navigator.clipboard?.writeText(pending) ?? Promise.reject()).then(() => setNotice('已复制识别文字')).catch(() => setNotice('无法复制，请使用追加按钮')) }}>复制</button></>}
+    }}>追加识别文字</button><button className="listener-action" type="button" onClick={() => { void (navigator.clipboard?.writeText(pending) ?? Promise.reject()).then(() => setNotice('已复制识别文字')).catch(() => setNotice('无法复制，请使用追加按钮')) }}>复制</button></>}
     </MessageDialog>}
   </div>
 }
@@ -118,16 +120,16 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
 function MessageDialog({ message, onClose, onSettings, children }: { message: string; onClose: () => void; onSettings: () => void; children?: import('react').ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => { dialog.current?.showModal() }, [])
-  return <dialog ref={dialog} className="speeker-dialog speeker-popup" aria-label="语音输入提示" onCancel={onClose} onClose={onClose}>
-    <h2>语音输入</h2><p role="alert">{message}</p>{children}<div className="speeker-popup-actions"><button className="speeker-action" onClick={onSettings}>检查设置</button><button className="speeker-action" onClick={onClose}>关闭</button></div>
+  return <dialog ref={dialog} className="listener-dialog listener-popup" aria-label="语音输入提示" onCancel={onClose} onClose={onClose}>
+    <h2>语音输入</h2><p role="alert">{message}</p>{children}<div className="listener-popup-actions"><button className="listener-action" onClick={onSettings}>检查设置</button><button className="listener-action" onClick={onClose}>关闭</button></div>
   </dialog>
 }
 
 function SettingsDialog({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   useEffect(() => { dialog.current?.showModal() }, [])
-  return <dialog ref={dialog} className="speeker-dialog" aria-label="语音输入设置" onCancel={onClose} onClose={onClose}>
-    <div className="speeker-dialog-close"><button type="button" className="speeker-action" onClick={onClose}>关闭</button></div>
+  return <dialog ref={dialog} className="listener-dialog" aria-label="语音输入设置" onCancel={onClose} onClose={onClose}>
+    <div className="listener-dialog-close"><button type="button" className="listener-action" onClick={onClose}>关闭</button></div>
     <VoiceSettings/>
   </dialog>
 }
@@ -148,7 +150,7 @@ function UpdateIndicator({ progress }: { progress: UpdateProgress | null }) {
       break
     default: label = '更新未完成'
   }
-  return <div aria-live="polite"><progress className="speeker-progress" aria-label="更新进度" max={100} value={value}/><p>{label}</p></div>
+  return <div aria-live="polite"><progress className="listener-progress" aria-label="更新进度" max={100} value={value}/><p>{label}</p></div>
 }
 
 function VoiceSettings() {
@@ -250,40 +252,41 @@ function VoiceSettings() {
       setAvailable(false); setProgress(null); setManagementMessage(''); setMessage('已清除保存的配置')
     }).catch(error => setError(error.message)).finally(() => setBusy(false))
   }
-  const manage = (action: 'check' | 'update' | 'uninstall') => {
+  const manage = (action: 'check' | 'update') => {
     setProgress(action === 'update' ? { phase: 'checking', received: 0 } : null); setUpdating(action === 'update')
-    setBusy(true); setManagementMessage(action === 'check' ? '正在检查更新…' : action === 'update' ? '正在下载并安装新版，请等待…' : '正在卸载插件…')
+    setBusy(true); setManagementMessage(action === 'check' ? '正在检查更新…' : '正在下载并安装新版，请等待…')
     void settings.manage(action, form).then(result => {
       if (action === 'check') { setAvailable(!!result.available); setLatestVersion(result.latest ?? ''); setManagementMessage(result.available ? `发现新版 ${result.latest}` : '当前已是最新版本') }
-      else { setManagementMessage(result.message ?? '操作已完成'); setAvailable(false); if (action === 'update') setProgress(p => ({ ...p, received: p?.received ?? 0, phase: 'done' })) }
+      else { setManagementMessage(result.message ?? '操作已完成'); setAvailable(false); setProgress(p => ({ ...p, received: p?.received ?? 0, phase: 'done' })) }
     }).catch(error => { setManagementMessage(''); setProgress(null); setError(error.message) }).finally(() => { setBusy(false); setUpdating(false) })
   }
-  return <section className="speeker-settings" data-speeker-settings>
+  return <section className="listener-settings" data-listener-settings>
     <h2>语音输入</h2><p>dsh-listener: 轻量化云端实时识别语音</p>
-    <label className="speeker-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => setKey(e.target.value)}/></label>
-    <label className="speeker-field"><span>地域</span><select value={form.region} onChange={e => update('region', e.target.value as Preferences['region'])}><option value="beijing">北京</option><option value="singapore">新加坡</option></select></label>
-    <label className="speeker-field"><span>Workspace ID</span><div><input aria-label="Workspace ID" aria-describedby="speeker-workspace-hint" value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {
+    <label className="listener-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => setKey(e.target.value)}/></label>
+    <label className="listener-field"><span>地域</span><select value={form.region} onChange={e => update('region', e.target.value as Preferences['region'])}><option value="beijing">北京</option><option value="singapore">新加坡</option></select></label>
+    <label className="listener-field"><span>Workspace ID</span><div><input aria-label="Workspace ID" aria-describedby="listener-workspace-hint" value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {
       const value = e.target.value.trim(), workspace = workspaceFromHost(value)
       if (workspace) { dirty.current = true; setForm(p => ({ ...p, ...workspace })); setMessage('已从 API Host 提取空间 ID 和地域，点击保存生效') }
       else update('workspaceId', value)
-    }}/><p id="speeker-workspace-hint" className="speeker-hint">地域和 Workspace ID 必须与百炼密钥一致。</p></div></label>
-    <label className="speeker-field"><span>识别模型</span><div><input aria-label="识别模型" aria-describedby="speeker-model-hint" value={form.model} onChange={e => update('model', e.target.value.trim())}/><p id="speeker-model-hint" className="speeker-hint">模型需支持 DashScope 流式识别协议，音频不写入磁盘。</p></div></label>
-    <div className="speeker-field"><span>快捷键</span><div className="speeker-shortcut"><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="speeker-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键' : '录入快捷键'}</button></div></div>
-    <label className="speeker-field"><span>录音模式</span><select value={form.mode} onChange={e => update('mode', e.target.value as Preferences['mode'])}><option value="hold">长按：按下开始，松开停止</option><option value="toggle">点按：再次按下停止</option></select></label>
-    <label className="speeker-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>
-    <div className="speeker-actions">
-      <button className="speeker-action speeker-primary" type="button" disabled={busy || !saved?.writable} onClick={saveConfiguration}>{saving ? '保存中…' : '保存'}</button>
-      <button type="button" className="speeker-action" disabled={busy || !saved?.writable} onClick={resetConfiguration}>清除已保存配置</button>
-      <button type="button" className="speeker-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button>
+    }}/><p id="listener-workspace-hint" className="listener-hint">地域和 Workspace ID 必须与百炼密钥一致。</p></div></label>
+    <label className="listener-field"><span>识别模型</span><div><input aria-label="识别模型" aria-describedby="listener-model-hint" value={form.model} onChange={e => update('model', e.target.value.trim())}/><p id="listener-model-hint" className="listener-hint">模型需支持 DashScope 流式识别协议，音频不写入磁盘。</p></div></label>
+    <div className="listener-field"><span>快捷键</span><div className="listener-shortcut"><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="listener-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键' : '录入快捷键'}</button></div></div>
+    <label className="listener-field"><span>录音模式</span><select value={form.mode} onChange={e => update('mode', e.target.value as Preferences['mode'])}><option value="hold">长按：按下开始，松开停止</option><option value="toggle">点按：再次按下停止</option></select></label>
+    <label className="listener-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>
+    <div className="listener-actions">
+      <button className="listener-action listener-primary" type="button" disabled={busy || !saved?.writable} onClick={saveConfiguration}>{saving ? '保存中…' : '保存'}</button>
+      <button type="button" className="listener-action" disabled={busy || !saved?.writable} onClick={resetConfiguration}>清除已保存配置</button>
+      <button type="button" className="listener-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button>
     </div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
     <details open><summary>插件管理 · v{VERSION}</summary>
-      <label className="speeker-field"><span>下载来源</span><select disabled={busy || !saved?.writable} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">GitHub 官方下载</option><option value="mirror">GitHub 镜像下载</option></select></label>
-      {form.updateSource === 'mirror' && <><label className="speeker-field"><span>镜像网址</span><input type="url" disabled={busy || !saved?.writable} value={form.mirrorUrl} placeholder="https://你的镜像域名" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
+      <div className="listener-field listener-update-field"><label htmlFor="listener-update-source">更新来源</label><div className="listener-update-controls">
+        <select id="listener-update-source" disabled={busy || !saved?.writable} value={form.updateSource} onChange={e => { update('updateSource', e.target.value as Preferences['updateSource']); setAvailable(false); setManagementMessage('') }}><option value="official">npm 官方</option><option value="mirror">npm 镜像</option></select>
+        <button type="button" className="listener-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
+        <button type="button" className="listener-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
+      </div></div>
+      {form.updateSource === 'mirror' && <><label className="listener-field"><span>镜像网址</span><input type="url" disabled={busy || !saved?.writable} value={form.mirrorUrl} placeholder="https://registry.npmmirror.com" onChange={e => { update('mirrorUrl', e.target.value); setAvailable(false); setManagementMessage('') }}/></label>
       </>}
-      <div className="speeker-actions"><button type="button" className="speeker-action" disabled={busy} onClick={() => manage('check')}>检查更新</button>
-        <button type="button" className="speeker-action" disabled={busy || !available} onClick={() => manage('update')}>{available ? `更新至 ${latestVersion}` : '更新'}</button>
-        <button type="button" className="speeker-action" disabled={busy} onClick={() => manage('uninstall')}>一键卸载</button></div>
       <p role="status" aria-label="更新状态">{managementMessage}</p>
       <UpdateIndicator progress={progress}/>
     </details>
@@ -297,7 +300,7 @@ export function apply(ctx: Context): void {
     const sheet = document.createElement('style'); sheet.textContent = style; document.head.append(sheet)
     return () => sheet.remove()
   })
-  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-speeker', order: 90 }, VoiceButton))
+  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-listener', order: 90 }, VoiceButton))
   // Bundle configuration is keyed by package name, as in dshmarket. Keep this
   // optional: a host without the plugin page can still use the mic's dialog.
   const bundleSlots = ctx.slots as unknown as {
@@ -305,9 +308,9 @@ export function apply(ctx: Context): void {
     register(options: { name: string; key: string }, render: (props: { view: 'summary' | 'page' }) => import('react').ReactNode): unknown
   }
   bundleSlots.inject('plugins.bundle.config', () => bundleSlots.register({
-    name: 'plugins.bundle.config', key: 'dsh-speeker',
+    name: 'plugins.bundle.config', key: 'dsh-listener',
   }, ({ view }) => view === 'summary' ? null : <VoiceSettings/>))
-  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({ name: 'settings.plugins.tab', id: 'dsh-speeker', order: 65, label: () => '语音输入' }, VoiceSettings))
+  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({ name: 'settings.plugins.tab', id: 'dsh-listener', order: 65, label: () => '语音输入' }, VoiceSettings))
   ctx.effect(() => () => { for (const session of sessions) session.cancel(); sessions.clear(); owner = undefined })
   void settings.refresh().catch(() => undefined)
 }

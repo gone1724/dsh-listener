@@ -12,7 +12,7 @@ import { BailianTask } from './host/bailian.ts'
 import { mountHttpChannel } from './host/http-channel.ts'
 import { mountManagement } from './host/management.ts'
 
-export const name = 'dsh-speeker'
+export const name = 'dsh-listener'
 export const inject = ['webServer', 'connection', 'credentials', 'settings']
 export const Config = z.object({
   model: z.string().default(defaults.model).volatile(),
@@ -24,7 +24,7 @@ export const Config = z.object({
   updateSource: z.union(['official', 'mirror']).default('official').volatile(),
   mirrorUrl: z.string().default(defaults.mirrorUrl).volatile(),
 })
-const keyRef = credentialRef('DSH_SPEEKER_API_KEY')
+const keyRef = credentialRef('DSH_LISTENER_API_KEY')
 function json(res: ServerResponse, status: number, value: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
   res.end(JSON.stringify(value))

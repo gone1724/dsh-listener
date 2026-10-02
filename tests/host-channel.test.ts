@@ -13,22 +13,22 @@ it('下载设置独立保存；清除配置恢复默认并移除密钥，拒绝�
   const ctx: any = {
     effect(fn: any) { effects.push(fn()) }, credentials,
     settings: { configure: () => () => {}, writable: true,
-      describe: () => [{ ns: 'dsh-speeker', value, revision }],
+      describe: () => [{ ns: 'dsh-listener', value, revision }],
       update: async (_name: string, next: any) => { value = next; revision++ },
     }, connection: { admit: () => ({ peer: {} }) },
     webServer: { register: (route: any) => { routes.set(route.path, route.handler); return () => {} }, registerUpgrade: () => () => {} },
   }
   apply(ctx)
-  const server = createServer((req, res) => { void routes.get('/dsh-speeker/config')(req, res) })
+  const server = createServer((req, res) => { void routes.get('/dsh-listener/config')(req, res) })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
   try {
-    const response = await fetch(`http://127.0.0.1:${(server.address() as { port: number }).port}/dsh-speeker/config`, {
+    const response = await fetch(`http://127.0.0.1:${(server.address() as { port: number }).port}/dsh-listener/config`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updateDownload: { updateSource: 'mirror', mirrorUrl: '' }, revision: 0 }),
     })
     expect(response.status).toBe(200)
     expect(value).toEqual({ ...defaults, model: 'keep-model', autoSend: true, updateSource: 'mirror', mirrorUrl: '' })
     expect(credentials.set).not.toHaveBeenCalled(); expect(credentials.unset).not.toHaveBeenCalled()
-    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/dsh-speeker/config`
+    const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/dsh-listener/config`
     const reset = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true, revision: 1 }) })
     expect(reset.status).toBe(200); expect(value).toEqual(defaults)
     expect((await reset.json()).configured).toBe(false); expect(credentials.unset).toHaveBeenCalledOnce()
@@ -48,7 +48,7 @@ it.each(['missing', 'unreadable'])('本地通道能返回 %s 密钥的明确错�
   const server = createServer()
   const ctx: any = {
     effect(fn: () => (() => void)) { effects.push(fn()) },
-    settings: { configure: () => () => {}, describe: () => [{ ns: 'dsh-speeker', value: defaults, revision: 0 }], writable: true },
+    settings: { configure: () => () => {}, describe: () => [{ ns: 'dsh-listener', value: defaults, revision: 0 }], writable: true },
     credentials: { resolve: async () => { if (mode === 'unreadable') throw new Error('private storage detail'); return undefined } },
     connection: { admit: () => ({ peer: {} }) },
     webServer: { register: () => () => {}, registerUpgrade: (route: any) => { upgrade = route.handler; return () => {} } },
@@ -57,7 +57,7 @@ it.each(['missing', 'unreadable'])('本地通道能返回 %s 密钥的明确错�
   server.on('upgrade', (req, socket, head) => { void upgrade(req, socket, head) })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
   const port = (server.address() as { port: number }).port
-  const client = new WebSocket(`ws://127.0.0.1:${port}/dsh-speeker/stream`)
+  const client = new WebSocket(`ws://127.0.0.1:${port}/dsh-listener/stream`)
   try {
     const [raw] = await once(client, 'message')
     const event = JSON.parse(raw.toString())

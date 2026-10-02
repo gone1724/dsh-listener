@@ -1,6 +1,6 @@
 # npm 发布
 
-包名为 `dsh-speeker`，默认渠道为 `beta`，目标 registry 为 `https://registry.npmjs.org`。发布同一版本前应检查该版本是否已存在；每次发布新内容必须提升版本。
+包名为 `dsh-listener`，默认渠道为 `latest`，目标 registry 为 `https://registry.npmjs.org`。发布同一版本前应检查该版本是否已存在；每次发布新内容必须提升版本。
 
 ## 本机发布
 
@@ -11,11 +11,11 @@
 ```powershell
 pnpm check
 pnpm verify:package
-npm publish ./output/dsh-speeker-版本号.tgz --dry-run --tag beta --access public --registry=https://registry.npmjs.org
-npm publish ./output/dsh-speeker-版本号.tgz --tag beta --access public --registry=https://registry.npmjs.org
+npm publish ./output/dsh-listener-版本号.tgz --dry-run --tag latest --access public --registry=https://registry.npmjs.org
+npm publish ./output/dsh-listener-版本号.tgz --tag latest --access public --registry=https://registry.npmjs.org
 ```
 
-将命令中的版本号替换为 `package.json` 的 version。实际发布使用已经校验的 tgz。发布后运行 `npm view dsh-speeker dist-tags --registry=https://registry.npmjs.org` 核对渠道和版本。
+将命令中的版本号替换为 `package.json` 的 version。实际发布使用已经校验的 tgz。发布后运行 `npm view dsh-listener dist-tags --registry=https://registry.npmjs.org` 核对渠道和版本。
 
 ## GitHub 自动发布
 
@@ -27,8 +27,8 @@ npm publish ./output/dsh-speeker-版本号.tgz --tag beta --access public --regi
 - Environment：留空（此工作流没有声明 GitHub Environment）
 - 允许操作：`npm publish`
 
-配置完成后，在 GitHub Actions 中选择 **Publish npm → Run workflow**，选择 `master` 分支和渠道（默认 `beta`）。工作流验证、构建、打包并通过 OIDC 发布，不需要 `NPM_TOKEN`。同一版本已经发布时需要先提升版本再运行。
+配置完成后，在 GitHub Actions 中选择 **Publish npm → Run workflow**，选择 `master` 分支。工作流验证、构建、打包并通过 OIDC 发布，不需要 `NPM_TOKEN`。同一版本已经发布时需要先提升版本再运行。
 
-工作流使用 Node.js 24 和 npm 11，满足 npm Trusted Publishing 要求。正式切换到 `latest` 前应完成真实百炼、Desktop、长录音收尾和更新并发验收。
+工作流使用 Node.js 24 和 npm 11，满足 npm Trusted Publishing 要求。统一发布到 `latest`；发布成功后，0.3.9 起的插件检查更新会查询该渠道。每次发布前完成适当验证，真实云端与 Desktop 的验收限制见 README。
 
 官方说明：https://docs.npmjs.com/trusted-publishers/

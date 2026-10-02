@@ -2,14 +2,6 @@ name: Publish npm
 
 on:
   workflow_dispatch:
-    inputs:
-      channel:
-        description: npm distribution tag
-        type: choice
-        options:
-          - beta
-          - latest
-        default: beta
 
 permissions:
   contents: read
@@ -37,8 +29,6 @@ jobs:
       - run: pnpm check
       - run: pnpm verify:package
       - name: Publish verified archive with OIDC
-        env:
-          PUBLISH_CHANNEL: ${{ inputs.channel }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          npm publish "./output/dsh-speeker-${VERSION}.tgz" --access public --tag "$PUBLISH_CHANNEL" --registry=https://registry.npmjs.org
+          npm publish "./output/dsh-listener-${VERSION}.tgz" --access public --tag latest --registry=https://registry.npmjs.org

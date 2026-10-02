@@ -2,15 +2,16 @@ import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { access, readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 import { expect, it, vi } from 'vitest'
 import { downloadArchive } from '../src/host/download.ts'
 import type { UpdateProgress } from '../src/shared.ts'
 
 function archive(version = '0.4.0') {
   const blocks: Buffer[] = []
-  for (const [name, value] of Object.entries({ 'package.json': JSON.stringify({ name: 'dsh-speeker', version }), 'lib/index.js': 'host', 'lib/client.js': 'client', 'lib/pcm-worklet.js': 'worklet', 'cordis.patch.yml': 'patch' })) {
+  for (const [name, value] of Object.entries({ 'package.json': JSON.stringify({ name: 'dsh-listener', version }), 'lib/index.js': 'host', 'lib/client.js': 'client', 'lib/pcm-worklet.js': 'worklet', 'cordis.patch.yml': 'patch' })) {
     const body = Buffer.from(value), header = Buffer.alloc(512)
-    header.write(`source/${name}`); header.write(body.length.toString(8).padStart(11, '0'), 124)
+    header.write(`package/${name}`); header.write(body.length.toString(8).padStart(11, '0'), 124)
     blocks.push(header, body, Buffer.alloc((512 - body.length % 512) % 512))
   }
   return gzipSync(Buffer.concat([...blocks, Buffer.alloc(1024)]))
@@ -36,4 +37,11 @@ it('拒绝版本错误的压缩包、镜像 HTML 页面和 HTTP 错误，不交�
   await expect(downloadArchive('https://mirror.example/package.tar.gz', '0.4.0', vi.fn(), vi.fn(async () => new Response(archive('0.3.0'))) as any)).rejects.toThrow('版本不一致')
   await expect(downloadArchive('https://mirror.example/package.tar.gz', '0.4.0', vi.fn(), vi.fn(async () => new Response('<html>proxy error</html>')) as any)).rejects.toThrow()
   await expect(downloadArchive('https://mirror.example/package.tar.gz', '0.4.0', vi.fn(), vi.fn(async () => new Response('', { status: 503 })) as any)).rejects.toThrow('HTTP 503')
+})
+it('npm 安装包必须匹配 registry 的 SHA-512 完整性值', async () => {
+  const bytes = archive()
+  const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`
+  const result = await downloadArchive('https://registry.npmjs.org/package.tgz', '0.4.0', vi.fn(), vi.fn(async () => new Response(bytes)) as any, integrity)
+  await result.dispose()
+  await expect(downloadArchive('https://registry.npmjs.org/package.tgz', '0.4.0', vi.fn(), vi.fn(async () => new Response(bytes)) as any, 'sha512-' + Buffer.alloc(64).toString('base64'))).rejects.toThrow('完整性校验失败')
 })

@@ -1,9 +1,9 @@
-export const BASE = '/dsh-speeker'
+export const BASE = '/dsh-listener'
 export const DEFAULT_MODEL = 'qwen-audio-3.1-asr-flash-streaming'
 export const SAMPLE_RATE = 16000
 export const MAX_AUDIO_BYTES = 16000 * 2 * 120
 export const MAX_BUFFER_BYTES = 16000 * 2 * 15
-export const VERSION = '0.3.7'
+export const VERSION = '0.3.11'
 export interface UpdateSource {
   updateSource: 'official' | 'mirror'
   mirrorUrl: string
@@ -28,21 +28,23 @@ export interface SettingsView extends Preferences {
 }
 export const defaults: Preferences = {
   model: DEFAULT_MODEL, region: 'beijing', workspaceId: '', hotkey: 'AltRight', mode: 'hold', autoSend: false,
-  updateSource: 'official', mirrorUrl: 'https://gh-proxy.org',
+  updateSource: 'official', mirrorUrl: 'https://registry.npmmirror.com',
 }
 
 export function validateUpdateSource(input: Partial<UpdateSource>, requireMirror = true): UpdateSource {
   const updateSource = input.updateSource ?? 'official'
   if (updateSource !== 'official' && updateSource !== 'mirror') throw new Error('更新下载来源无效')
   if (input.mirrorUrl !== undefined && typeof input.mirrorUrl !== 'string') throw new Error('镜像网址无效')
-  const mirrorUrl = (input.mirrorUrl ?? '').trim()
+  const previousUrl = (input.mirrorUrl ?? '').trim().replace(/\/+$/, '')
+  // Migrate GitHub proxy settings: those proxies cannot serve npm registry requests.
+  const mirrorUrl = /^https:\/\/(?:gh-proxy\.(?:org|com)|ghproxy\.com)(?:\/|$)/i.test(previousUrl) ? defaults.mirrorUrl : previousUrl
   if (mirrorUrl) {
     try {
       const url = new URL(mirrorUrl)
       if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || mirrorUrl.length > 512) throw new Error()
-    } catch { throw new Error('镜像网址须为 HTTPS 前缀，不包含账号、查询参数或完整 GitHub 下载链接') }
+    } catch { throw new Error('镜像网址须为 HTTPS npm registry 地址，不包含账号、查询参数或下载链接') }
   }
-  if (requireMirror && updateSource === 'mirror' && !mirrorUrl) throw new Error('请先填写 GitHub 镜像网址')
+  if (requireMirror && updateSource === 'mirror' && !mirrorUrl) throw new Error('请先填写 npm 镜像网址')
   return { updateSource, mirrorUrl: mirrorUrl.replace(/\/+$/, '') }
 }
 

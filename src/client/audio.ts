@@ -20,7 +20,7 @@ export class Recording {
       if (this.context.sampleRate !== SAMPLE_RATE) throw new Error('浏览器不支持 16 kHz 音频采集')
       await this.context.audioWorklet.addModule(`${BASE}/pcm-worklet.js`)
       if (this.cancelled) throw new Error('录音已取消')
-      this.node = new AudioWorkletNode(this.context, 'dsh-speeker-pcm')
+      this.node = new AudioWorkletNode(this.context, 'dsh-listener-pcm')
       this.node.port.onmessage = event => { if (!this.cancelled && event.data instanceof ArrayBuffer) this.chunk(event.data) }
       this.source = this.context.createMediaStreamSource(stream)
       this.source.connect(this.node)
