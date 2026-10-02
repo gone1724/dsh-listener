@@ -267,7 +267,7 @@ function VoiceSettings() {
       if (workspace) { dirty.current = true; setForm(p => ({ ...p, ...workspace })); setMessage('已从 API Host 提取空间 ID 和地域，点击保存生效') }
       else update('workspaceId', value)
     }}/><p id="speeker-workspace-hint" className="speeker-hint">地域和 Workspace ID 必须与百炼密钥一致。</p></div></label>
-    <label className="speeker-field"><span>识别模型</span><div><input aria-label="识别模型" aria-describedby="speeker-model-hint" value={form.model} onChange={e => update('model', e.target.value.trim())}/><p id="speeker-model-hint" className="speeker-hint">模型需支持 DashScope 流式识别协议。音频发送至百炼，不写入磁盘。</p></div></label>
+    <label className="speeker-field"><span>识别模型</span><div><input aria-label="识别模型" aria-describedby="speeker-model-hint" value={form.model} onChange={e => update('model', e.target.value.trim())}/><p id="speeker-model-hint" className="speeker-hint">模型需支持 DashScope 流式识别协议，音频不写入磁盘。</p></div></label>
     <div className="speeker-field"><span>快捷键</span><div className="speeker-shortcut"><input aria-label="快捷键" value={form.hotkey} readOnly/><button type="button" className="speeker-action" onClick={() => setCapture(!capture)}>{capture ? '请按快捷键' : '录入快捷键'}</button></div></div>
     <label className="speeker-field"><span>录音模式</span><select value={form.mode} onChange={e => update('mode', e.target.value as Preferences['mode'])}><option value="hold">长按：按下开始，松开停止</option><option value="toggle">点按：再次按下停止</option></select></label>
     <label className="speeker-field"><span>自动发送</span><input type="checkbox" checked={form.autoSend} onChange={e => update('autoSend', e.target.checked)}/></label>

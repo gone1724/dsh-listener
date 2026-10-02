@@ -3,7 +3,7 @@ export const DEFAULT_MODEL = 'qwen-audio-3.1-asr-flash-streaming'
 export const SAMPLE_RATE = 16000
 export const MAX_AUDIO_BYTES = 16000 * 2 * 120
 export const MAX_BUFFER_BYTES = 16000 * 2 * 15
-export const VERSION = '0.3.4'
+export const VERSION = '0.3.5'
 export interface UpdateSource {
   updateSource: 'official' | 'mirror'
   mirrorUrl: string
