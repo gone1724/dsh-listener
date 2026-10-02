@@ -1,6 +1,6 @@
 # 设置入口与更新机制
 
-## 插件详情设置入口（未发布）
+## v0.3.7 插件详情设置入口
 
 完整语音设置接入宿主 `plugins.bundle.config`，以包名 `dsh-speeker` 为 key，显示在插件列表中本插件的详情设置页。与 dshmarket 使用同一插槽机制，不向插件卡片摘要塞入整个表单。另注册 `settings.plugins.tab` 的“语音输入”标签，并保留右键麦克风弹窗；移除单独的 `settings.section` 导航项。
 

@@ -1,6 +1,6 @@
 {
   "name": "dsh-speeker",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "DeepSeek Harness 云端语音输入插件，支持快捷键录音、阿里云百炼实时识别，并将文字追加到当前会话草稿。",
   "license": "MIT",
   "type": "module",
@@ -37,7 +37,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test && pnpm build",
-    "verify:package": "pnpm pack --out output/dsh-speeker-0.3.6.tgz && node scripts/verify-package.mjs",
+    "verify:package": "pnpm pack --out output/dsh-speeker-0.3.7.tgz && node scripts/verify-package.mjs",
     "prepack": "pnpm build"
   },
   "dsh": {

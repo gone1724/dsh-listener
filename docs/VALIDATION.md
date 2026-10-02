@@ -1,11 +1,11 @@
 # v0.3.4 验证记录
 
-## 插件详情设置入口（未发布）
+## v0.3.7 插件详情设置入口
 
 - `pnpm check` 通过：51 项测试、TypeScript 检查及 Host/Client 构建。
 - 对照本地 Harness 0.2.0-rc.2 的插件页面源码确认 `plugins.bundle.config` 为包名 keyed 插槽，详情页传入 `view: 'page'`；语音表单以 `dsh-speeker` 为 key 注册。
 - 管理接口回归覆盖 `bundle-in-use` 返回结果及抛出对象两种形式，均显示中文、进度为 error，并可重试；成功替换仍返回宿主的重启要求。
-- 尚未在用户 Desktop 上验证插件图标点击后的实际页面，也未验证真实版本替换或无重启加载新版。此次修改未发布。
+- 尚未在用户 Desktop 上验证插件图标点击后的实际页面，也未验证真实版本替换或无重启加载新版。
 
 日期：2026-10-02。环境：Windows、Node.js 22.23.2、pnpm 10.18.0、Harness 0.2.0-rc.2、Cordis 4.0.4。
 
