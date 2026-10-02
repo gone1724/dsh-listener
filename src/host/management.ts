@@ -6,6 +6,12 @@ import { downloadArchive } from './download.ts'
 
 const REPOSITORY = 'gone1724/dsh-listener'
 const managers = new WeakMap<Context, Promise<PluginManager>>()
+function managementError(code: string): string {
+  if (code === 'bundle-in-use') return '旧版插件仍被宿主加载，本次操作未完成。请在 Desktop 插件管理中禁用语音输入，完全退出并重开 Desktop，再从 Desktop 插件管理安装新版或卸载。'
+  if (code === 'stop-profile') return '宿主无法在运行中卸载此插件。请停止当前 profile，再从 Desktop 插件管理操作。'
+  if (/timeout/i.test(code)) return '安装超时。请在 Desktop 插件管理中查看详情后重试。'
+  return `插件管理操作未完成（${code}）。请在 Desktop 插件管理中查看详情。`
+}
 export function compareVersions(a: string, b: string): number {
   const x = a.split('.').map(Number), y = b.split('.').map(Number)
   for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]
@@ -100,8 +106,7 @@ export function mountManagement(ctx: Context, active: () => number, fetcher: typ
       } else result = await service.removeBundle('dsh-speeker')
       if (result.application === 'failed' || result.application === 'cancelled' || result.application === 'overridden') {
         if (action === 'update') progress = { ...progress, phase: 'error' }
-        reply(400, { error: /timeout/i.test(result.error?.code ?? '') ? '安装超时。请在 Desktop 插件管理中查看详情后重试。'
-          : `插件管理操作未完成（${result.error?.code ?? result.application}）。请在 Desktop 插件管理中查看详情。` }); return
+        reply(400, { error: managementError(result.error?.code ?? result.application) }); return
       }
       if (action === 'update') progress = { ...progress, phase: 'done' }
       reply(200, { application: result.application, message: action === 'uninstall' ? '插件已卸载，设置和密钥保留。' : result.application === 'restart-required' ? '新版已安装，请完全退出并重新打开 Desktop。' : '更新已应用；如界面仍显示旧版本，请重新打开页面。' })
@@ -109,9 +114,10 @@ export function mountManagement(ctx: Context, active: () => number, fetcher: typ
       if (action === 'update') progress = { ...progress, phase: 'error' }
       const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)
       const invalidJson = error instanceof SyntaxError
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : undefined
       reply(400, { error: timeout ? '更新连接超时。国内环境可选择 GitHub 镜像下载并填写可用镜像网址，再重试。'
         : invalidJson ? '更新服务未返回有效 JSON。请检查镜像是否支持 GitHub API 和 Raw 文件代理。'
-        : error instanceof Error ? error.message : '插件管理失败' })
+        : code ? managementError(code) : error instanceof Error ? error.message : '插件管理失败' })
     }
     finally { busy = false }
   } })

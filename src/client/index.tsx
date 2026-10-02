@@ -298,7 +298,16 @@ export function apply(ctx: Context): void {
     return () => sheet.remove()
   })
   ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-speeker', order: 90 }, VoiceButton))
-  ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section', id: 'dsh-speeker', order: 25, label: () => '语音输入' }, VoiceSettings))
+  // Bundle configuration is keyed by package name, as in dshmarket. Keep this
+  // optional: a host without the plugin page can still use the mic's dialog.
+  const bundleSlots = ctx.slots as unknown as {
+    inject(name: string, register: () => unknown): void
+    register(options: { name: string; key: string }, render: (props: { view: 'summary' | 'page' }) => import('react').ReactNode): unknown
+  }
+  bundleSlots.inject('plugins.bundle.config', () => bundleSlots.register({
+    name: 'plugins.bundle.config', key: 'dsh-speeker',
+  }, ({ view }) => view === 'summary' ? null : <VoiceSettings/>))
+  ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({ name: 'settings.plugins.tab', id: 'dsh-speeker', order: 65, label: () => '语音输入' }, VoiceSettings))
   ctx.effect(() => () => { for (const session of sessions) session.cancel(); sessions.clear(); owner = undefined })
   void settings.refresh().catch(() => undefined)
 }

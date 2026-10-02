@@ -54,6 +54,16 @@ it('更新/一键卸载只调用官方管理器操作本插件，并如实返回
     rejection = 403; expect((await call('update')).status).toBe(403)
     expect((await fetch(`${origin}/dsh-speeker/manage?action=progress`)).status).toBe(403)
     expect(manager.installBundle).toHaveBeenCalledTimes(2)
+    rejection = undefined
+    manager.installBundle.mockResolvedValueOnce({ application: 'failed', error: { code: 'bundle-in-use' } })
+    const occupied = await call('update')
+    expect(occupied.status).toBe(400)
+    expect((await occupied.json()).error).toContain('旧版插件仍被宿主加载')
+    expect((await (await fetch(`${origin}/dsh-speeker/manage?action=progress`)).json()).phase).toBe('error')
+    manager.installBundle.mockRejectedValueOnce({ code: 'bundle-in-use' })
+    expect((await (await call('update')).json()).error).toContain('从 Desktop 插件管理')
+    // A rejected install must release the management lock for a later retry.
+    expect((await call('update')).status).toBe(200)
   } finally { dispose(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
 })
 it('网络超时返回可操作的中文错误，镜像失败不会自动回退官方下载', async () => {
