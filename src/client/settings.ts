@@ -2,14 +2,17 @@ import { BASE, validateUpdateSource, type UpdateProgress, type UpdateSource, typ
 let snapshot: SettingsView | null = null
 const listeners = new Set<() => void>()
 let writes = Promise.resolve<unknown>(undefined)
-function write(body: Record<string, unknown>, revision: number): Promise<SettingsView> {
+function write(body: Record<string, unknown>, revision?: number): Promise<SettingsView> {
   const next = writes.then(() => request({ method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...body, revision: snapshot?.revision ?? revision }),
+    body: JSON.stringify({ ...body, revision: revision ?? snapshot?.revision ?? 0 }),
   }))
   writes = next.catch(() => undefined)
   return next
 }
-function publish(value: SettingsView): void { snapshot = value; for (const fn of listeners) fn() }
+function publish(value: SettingsView): void {
+  if (snapshot && value.revision < snapshot.revision) return
+  snapshot = value; for (const fn of listeners) fn()
+}
 async function request(options?: RequestInit): Promise<SettingsView> {
   const response = await fetch(`${BASE}/config`, { credentials: 'same-origin', ...options })
   const result = await response.json()
@@ -33,7 +36,7 @@ export const settings = {
     if (!response.ok) throw new Error(result.error ?? '插件管理失败')
     return result
   },
-  saveDownload: (source: UpdateSource) => write({ updateDownload: validateUpdateSource(source, false) }, snapshot?.revision ?? 0),
-  reset: () => write({ reset: true }, snapshot?.revision ?? 0),
+  saveDownload: (source: UpdateSource) => write({ updateDownload: validateUpdateSource(source, false) }),
+  reset: () => write({ reset: true }),
   save: (preferences: Preferences, revision: number, apiKey?: string) => write({ preferences, ...(apiKey ? { apiKey } : {}) }, revision),
 }

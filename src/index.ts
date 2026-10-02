@@ -48,9 +48,10 @@ export function apply(ctx: Context, initial: Preferences = defaults): void {
     writable: ctx.settings.writable, revision: descriptor()?.revision ?? 0,
   })
   ctx.effect(() => ctx.settings.configure({ auto: false }))
-  const channel = mountHttpChannel(ctx, preferences, keyRef)
+  let updating = false
+  const channel = mountHttpChannel(ctx, preferences, keyRef, undefined, () => updating)
   ctx.effect(() => channel.dispose)
-  ctx.effect(() => mountManagement(ctx, channel.active))
+  ctx.effect(() => mountManagement(ctx, channel.active, undefined, undefined, undefined, value => { updating = value }))
 
   ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: `${BASE}/config`, handler: async (req, res) => {
     const admission = ctx.connection.admit(req)

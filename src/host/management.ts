@@ -1,15 +1,17 @@
 import type { Context } from '@deepseek-ai/cordis'
 import PluginManager from '@deepseek-ai/dsh-plugin-manager'
 import HMR from '@deepseek-ai/dsh-hmr'
+import { join } from 'node:path'
 import { BASE, VERSION, validateUpdateSource, type UpdateSource, type UpdateProgress } from '../shared.ts'
 import { downloadArchive } from './download.ts'
 
 const REGISTRY = 'https://registry.npmjs.org'
 const managers = new WeakMap<Context, Promise<PluginManager>>()
-function managementError(code: string): string {
+function managementError(code: string, diagnostic?: string): string {
   if (code === 'bundle-in-use') return '旧版插件仍被宿主加载，本次操作未完成。请在 Desktop 插件管理中禁用语音输入，完全退出并重开 Desktop，再从 Desktop 插件管理安装新版。'
   if (code === 'stop-profile') return '宿主无法在运行中替换此插件。请停止当前 profile，再从 Desktop 插件管理操作。'
   if (/timeout/i.test(code)) return '安装超时。请在 Desktop 插件管理中查看详情后重试。'
+  if (code === 'operation-error' && diagnostic?.includes('ENOENT') && /dsh-listener-[^\s]*\.tgz/.test(diagnostic)) return '安装失败：已保存的插件安装包不存在。旧版更新清理了 pnpm 仍引用的临时文件，请恢复原安装包后重试。'
   return `插件管理操作未完成（${code}）。请在 Desktop 插件管理中查看详情。`
 }
 export function compareVersions(a: string, b: string): number {
@@ -61,7 +63,7 @@ async function enableProfileReload(ctx: Context): Promise<void> {
   const hmr = ctx.root.plugin(HMR, { root: [], debounce: 100, ignored: ['**/node_modules', '**/.*', 'cache', 'data'] })
   await hmr.await()
 }
-export function mountManagement(ctx: Context, active: () => number, fetcher: typeof fetch = fetch, getManager = manager, download = downloadArchive) {
+export function mountManagement(ctx: Context, active: () => number, fetcher: typeof fetch = fetch, getManager = manager, download = downloadArchive, setUpdating = (_value: boolean) => {}) {
   let busy = false
   let progress: UpdateProgress = { phase: 'idle', received: 0 }
   return ctx.webServer.register({ kind: 'exact', path: `${BASE}/manage`, handler: async (req, res) => {
@@ -76,6 +78,7 @@ export function mountManagement(ctx: Context, active: () => number, fetcher: typ
     if (busy) { reply(409, { error: '已有插件管理操作正在进行' }); return }
     if (active() > 0 && action !== 'check') { reply(409, { error: '请先结束录音，再更新插件' }); return }
     busy = true
+    if (action === 'update') setUpdating(true)
     if (action === 'update') progress = { phase: 'checking', received: 0 }
     try {
       const source = validateUpdateSource({
@@ -89,16 +92,19 @@ export function mountManagement(ctx: Context, active: () => number, fetcher: typ
       const latest = await latestRelease(fetcher, source)
       if (compareVersions(latest.version, VERSION) <= 0) { progress = { phase: 'done', received: 0 }; reply(200, { application: 'unchanged', message: '当前已是最新版本' }); return }
       const service = await getManager(ctx)
+      const profile = ctx.get('profileContext')
+      if (!profile?.dir) throw new Error('无法确定插件安装包的持久保存位置，请从 Desktop 插件管理更新')
       progress = { phase: 'downloading', received: 0 }
-      const archive = await download(latest.tarball, latest.version, value => { progress = value }, fetcher, latest.integrity)
+      const archive = await download(latest.tarball, latest.version, value => { progress = value }, fetcher, latest.integrity, join(profile.dir, '.plugin-manager', 'archives'))
       let result
       try {
+        if (active() > 0) throw new Error('请先结束录音，再更新插件')
         progress = { ...progress, phase: 'installing' }
         result = await service.installBundle(archive.path)
       } finally { await archive.dispose().catch(() => {}) }
       if (result.application === 'failed' || result.application === 'cancelled' || result.application === 'overridden') {
         progress = { ...progress, phase: 'error' }
-        reply(400, { error: managementError(result.error?.code ?? result.application) }); return
+        reply(400, { error: managementError(result.error?.code ?? result.application, result.error?.diagnostic) }); return
       }
       progress = { ...progress, phase: 'done' }
       reply(200, { application: result.application, message: result.application === 'restart-required' ? '新版已安装，请完全退出并重新打开 Desktop。' : '更新已应用；如界面仍显示旧版本，请重新打开页面。' })
@@ -111,6 +117,6 @@ export function mountManagement(ctx: Context, active: () => number, fetcher: typ
         : invalidJson ? '更新服务未返回有效 JSON。请检查填写的网址是否为 npm registry。'
         : code ? managementError(code) : error instanceof Error ? error.message : '插件管理失败' })
     }
-    finally { busy = false }
+    finally { busy = false; if (action === 'update') setUpdating(false) }
   } })
 }

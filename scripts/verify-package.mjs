@@ -12,7 +12,7 @@ for (let offset = 0; offset + 512 <= tar.length;) {
   files.set(name, tar.subarray(offset + 512, offset + 512 + size))
   offset += 512 + Math.ceil(size / 512) * 512
 }
-for (const name of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cordis.patch.yml', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'docs/VALIDATION.md', 'docs/UPDATES.md', 'package.json']) {
+for (const name of ['lib/index.js', 'lib/client.js', 'lib/pcm-worklet.js', 'cordis.patch.yml', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'package.json']) {
   assert.ok(files.get(`package/${name}`)?.length, `Missing package file: ${name}`)
 }
 assert.match(files.get('package/lib/client.js').toString(), /window\.__ModuleLoader__\.load/)

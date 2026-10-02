@@ -54,6 +54,11 @@ export class BailianTask {
     if (this.ended) return
     if (this.finishing) { this.fail('停止后收到音频，录音协议无效'); return }
     if (!audio.length || audio.length % 2 || audio.length > 32000) { this.fail('PCM 音频分块无效'); return }
+    // Microphone permission can arrive after the cloud task starts.
+    if (!this.bytes) {
+      clearTimeout(this.deadline)
+      this.deadline = setTimeout(() => this.fail('录音超过 120 秒，已取消'), 125000)
+    }
     this.bytes += audio.length
     if (this.bytes > MAX_AUDIO_BYTES) { this.fail('录音超过 120 秒，已取消'); return }
     if (!this.ready) {
@@ -69,6 +74,7 @@ export class BailianTask {
     if (!this.bytes) { this.fail('没有采集到音频'); return }
     this.finishing = true
     clearTimeout(this.timer)
+    clearTimeout(this.deadline)
     this.timer = setTimeout(() => this.fail('等待最终识别结果超时'), 20000)
     this.flushFinish()
   }

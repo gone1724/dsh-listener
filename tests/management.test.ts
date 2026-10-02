@@ -1,29 +1,30 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
+import { join } from 'node:path'
 import { expect, it, vi } from 'vitest'
 import { latestRelease, mountManagement, compareVersions } from '../src/host/management.ts'
 import { defaults, validatePreferences, validateUpdateSource } from '../src/shared.ts'
 
 const integrity = 'sha512-' + Buffer.alloc(64).toString('base64')
-const manifest = { name: 'dsh-listener', version: '0.4.0', dist: { tarball: 'https://registry.npmjs.org/dsh-listener/-/dsh-listener-0.4.0.tgz', integrity } }
+const manifest = { name: 'dsh-listener', version: '0.5.0', dist: { tarball: 'https://registry.npmjs.org/dsh-listener/-/dsh-listener-0.5.0.tgz', integrity } }
 const remote: any = vi.fn(async () => ({ ok: true, json: async () => manifest }))
 it('检查 npm latest，固定包名并验证版本、下载地址和完整性字段', async () => {
-  expect(await latestRelease(remote)).toEqual({ version: '0.4.0', tarball: manifest.dist.tarball, integrity })
+  expect(await latestRelease(remote)).toEqual({ version: '0.5.0', tarball: manifest.dist.tarball, integrity })
   expect(remote.mock.calls[0][0]).toBe('https://registry.npmjs.org/dsh-listener/latest')
   expect(compareVersions('0.10.0', '0.9.0')).toBeGreaterThan(0)
   await expect(latestRelease(vi.fn(async () => ({ ok: false, status: 429 })) as any)).rejects.toThrow('HTTP 429')
-  for (const invalid of [null, { ...manifest, name: 'another-package' }, { ...manifest, version: '0.4.0-beta' }, { ...manifest, dist: { ...manifest.dist, tarball: 'https://evil.example/package.tgz' } }, { ...manifest, dist: { ...manifest.dist, integrity: '' } }]) {
+  for (const invalid of [null, { ...manifest, name: 'another-package' }, { ...manifest, version: '0.5.0-beta' }, { ...manifest, dist: { ...manifest.dist, tarball: 'https://evil.example/package.tgz' } }, { ...manifest, dist: { ...manifest.dist, integrity: '' } }]) {
     await expect(latestRelease(vi.fn(async () => ({ ok: true, json: async () => invalid })) as any)).rejects.toThrow()
   }
 })
 it('npm 镜像按 registry 路径查询和下载，迁移旧 GitHub 代理配置', async () => {
   const fetcher: any = vi.fn(async () => ({ ok: true, json: async () => manifest }))
   const source = { updateSource: 'mirror' as const, mirrorUrl: 'https://mirror.example/proxy/' }
-  expect(await latestRelease(fetcher, source)).toEqual({ version: '0.4.0', tarball: 'https://mirror.example/proxy/dsh-listener/-/dsh-listener-0.4.0.tgz', integrity })
+  expect(await latestRelease(fetcher, source)).toEqual({ version: '0.5.0', tarball: 'https://mirror.example/proxy/dsh-listener/-/dsh-listener-0.5.0.tgz', integrity })
   expect(fetcher.mock.calls[0][0]).toBe('https://mirror.example/proxy/dsh-listener/latest')
   expect(validateUpdateSource({ updateSource: 'mirror', mirrorUrl: 'https://gh-proxy.org/' })).toEqual({ updateSource: 'mirror', mirrorUrl: defaults.mirrorUrl })
-  const mirrored = { ...manifest, dist: { ...manifest.dist, tarball: 'https://mirror.example/proxy/dsh-listener/-/dsh-listener-0.4.0.tgz' } }
-  expect((await latestRelease(vi.fn(async () => ({ ok: true, json: async () => mirrored })) as any, source)).version).toBe('0.4.0')
+  const mirrored = { ...manifest, dist: { ...manifest.dist, tarball: 'https://mirror.example/proxy/dsh-listener/-/dsh-listener-0.5.0.tgz' } }
+  expect((await latestRelease(vi.fn(async () => ({ ok: true, json: async () => mirrored })) as any, source)).version).toBe('0.5.0')
 })
 it('旧设置默认官方下载，镜像前缀验证拒绝无效或带凭据的网址', () => {
   const { updateSource, mirrorUrl, ...old } = defaults
@@ -40,7 +41,7 @@ it('更新固定插件并返回重启要求，拒绝已移除的卸载操作', a
     progress({ phase: 'downloading', received: 100, total: 100 })
     return { path: 'F:/test/dsh-listener-test.tgz', dispose: vi.fn(async () => {}) }
   })
-  const ctx: any = { connection: { admit: () => rejection ? { rejection } : { peer: {} } }, webServer: { register: (route: any) => { handler = route.handler; return () => {} } } }
+  const ctx: any = { get: () => ({ dir: 'F:/test/profile' }), connection: { admit: () => rejection ? { rejection } : { peer: {} } }, webServer: { register: (route: any) => { handler = route.handler; return () => {} } } }
   const dispose = mountManagement(ctx, () => active, remote, async () => manager, download)
   const server = createServer((req, res) => { void handler(req, res) }); server.listen(0, '127.0.0.1'); await once(server, 'listening')
   const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
@@ -49,10 +50,11 @@ it('更新固定插件并返回重启要求，拒绝已移除的卸载操作', a
     expect((await (await call('check')).json()).available).toBe(true)
     expect((await (await call('update')).json()).application).toBe('restart-required')
     expect(download.mock.calls[0][4]).toBe(integrity)
+    expect((download.mock.calls[0] as unknown[])[5]).toBe(join('F:/test/profile', '.plugin-manager', 'archives'))
     expect(manager.installBundle).toHaveBeenCalledExactlyOnceWith('F:/test/dsh-listener-test.tgz')
-    expect(download.mock.calls[0][0]).toBe('https://registry.npmjs.org/dsh-listener/-/dsh-listener-0.4.0.tgz')
+    expect(download.mock.calls[0][0]).toBe('https://registry.npmjs.org/dsh-listener/-/dsh-listener-0.5.0.tgz')
     expect((await call('update', { updateSource: 'mirror', mirrorUrl: 'https://mirror.example' })).status).toBe(200)
-    expect(download.mock.calls[1][0]).toBe('https://mirror.example/dsh-listener/-/dsh-listener-0.4.0.tgz')
+    expect(download.mock.calls[1][0]).toBe('https://mirror.example/dsh-listener/-/dsh-listener-0.5.0.tgz')
     expect((await (await fetch(`${origin}/dsh-listener/manage?action=progress`)).json())).toEqual({ phase: 'done', received: 100, total: 100 })
     expect((await call('update', { updateSource: 'mirror', mirrorUrl: '' })).status).toBe(400)
     active = 1; expect((await call('update')).status).toBe(409)
@@ -70,6 +72,8 @@ it('更新固定插件并返回重启要求，拒绝已移除的卸载操作', a
     expect((await (await fetch(`${origin}/dsh-listener/manage?action=progress`)).json()).phase).toBe('error')
     manager.installBundle.mockRejectedValueOnce({ code: 'bundle-in-use' })
     expect((await (await call('update')).json()).error).toContain('从 Desktop 插件管理')
+    manager.installBundle.mockResolvedValueOnce({ application: 'failed', error: { code: 'operation-error', diagnostic: "ENOENT: open 'C:/Temp/dsh-listener-old.tgz'" } })
+    expect((await (await call('update')).json()).error).toContain('pnpm 仍引用的临时文件')
     // A rejected install must release the management lock for a later retry.
     expect((await call('update')).status).toBe(200)
   } finally { dispose(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }

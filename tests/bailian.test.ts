@@ -75,6 +75,17 @@ describe('百炼流式任务', () => {
     for (let i = 0; i <= MAX_AUDIO_BYTES / 32000; i++) b.task.sendAudio(Buffer.alloc(32000))
     expect(b.events.at(-1)?.type).toBe('error')
   })
+  it('接近两分钟停止后仍允许完整的 20 秒收尾等待', () => {
+    vi.useFakeTimers()
+    const s = setup(); s.event('task-started')
+    vi.advanceTimersByTime(10000); s.task.sendAudio(Buffer.alloc(2))
+    vi.advanceTimersByTime(120000); s.task.finish()
+    vi.advanceTimersByTime(19000)
+    expect(s.socket.terminate).not.toHaveBeenCalled()
+    s.event('result-generated', { sentence_id: 1, sentence_end: true, text: '句尾结果' })
+    s.event('task-finished')
+    expect(s.events.at(-1)).toEqual({ type: 'final', text: '句尾结果' })
+  })
   it('不允许任意 URL 或无效模型进入配置', () => {
     expect(() => validatePreferences({ ...defaults, model: 'https://evil.example' })).toThrow()
     expect(() => validatePreferences({ ...defaults, workspaceId: 'evil.example/' })).toThrow()

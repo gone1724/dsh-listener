@@ -15,7 +15,7 @@ function reply(res: ServerResponse, status: number, value: unknown) {
 }
 
 /** Ordered binary HTTP uploads and bounded long polls work without Desktop WS forwarding. */
-export function mountHttpChannel(ctx: Context, preferences: () => Preferences, keyRef: CredentialRef, factory: TaskFactory = (p, k, emit) => new BailianTask(p, k, emit)) {
+export function mountHttpChannel(ctx: Context, preferences: () => Preferences, keyRef: CredentialRef, factory: TaskFactory = (p, k, emit) => new BailianTask(p, k, emit), updating = () => false) {
   const entries = new Map<string, Entry>()
   let creating = 0, disposed = false
   const active = () => creating + [...entries.values()].filter(e => !e.ended).length
@@ -32,6 +32,7 @@ export function mountHttpChannel(ctx: Context, preferences: () => Preferences, k
     const action = url.searchParams.get('action'), id = url.searchParams.get('id') ?? ''
     try {
       if (req.method === 'POST' && action === 'start') {
+        if (updating()) { reply(res, 503, { error: '语音插件正在更新，请稍后重试' }); return }
         if (disposed || active() >= 4 || entries.size >= 64) { reply(res, 503, { error: '语音通道忙，请稍后重试' }); return }
         creating++
         try {

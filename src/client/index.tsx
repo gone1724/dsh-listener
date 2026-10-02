@@ -14,6 +14,7 @@ import { VoiceSession } from './session.ts'
 export const inject = ['slots']
 const sessions = new Set<VoiceSession>()
 let owner: VoiceSession | undefined
+const pendingTranscripts = new Map<string, string>()
 const style = `
 .listener-button{border:0;border-radius:8px;padding:7px;display:inline-flex;align-items:center;gap:5px;color:#858585;background:transparent;cursor:pointer;font:inherit}
 .listener-button:hover{background:var(--dsw-alias-bg-layer-2,#8882)}.listener-button:disabled{opacity:.5;cursor:default}
@@ -41,7 +42,12 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
   latest.current = { input, config, inputActions }
   const start = useRef({ revision: 0, autoSend: false })
   const [notice, setNotice] = useState('')
-  const [pending, setPending] = useState('')
+  const [pending, setPendingState] = useState(() => pendingTranscripts.get(sessionId) ?? '')
+  const setPending = (text: string) => {
+    if (text) pendingTranscripts.set(sessionId, text)
+    else pendingTranscripts.delete(sessionId)
+    setPendingState(text)
+  }
   const [showSettings, setShowSettings] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
   const [session] = useState(() => new VoiceSession(text => {
@@ -60,8 +66,9 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
     begin: () => {
       const { config, input } = latest.current
       if (!config?.configured || input.phase !== 'plain' || (owner && owner !== session && owner.busy()) || session.busy()) return
+      if (pending) { setNotice('请先追加、复制或丢弃上次识别文字'); return }
       start.current = { revision: input.draftRev, autoSend: config.autoSend }
-      setNotice(''); setPending(''); owner = session
+      setNotice(''); owner = session
       void session.start()
     },
     finish: () => { void session.finish() },
@@ -107,11 +114,12 @@ function VoiceButton({ sessionId, useInput, inputActions }: PropsRuntime<'conver
       onContextMenu={event => { event.preventDefault(); if (!session.busy()) setShowSettings(true) }}
       onClick={() => { if (!config?.configured) setShowSettings(true); else if (session.active()) operations.current.finish(); else operations.current.begin() }}><Mic /></button>
     {showSettings && <SettingsDialog onClose={() => setShowSettings(false)}/>}
+    {pending && !notice && <button type="button" className="listener-action" onClick={() => setNotice('上次识别文字尚未处理')}>恢复识别文字</button>}
     {(notice && !['语音已追加', '已提交发送'].includes(notice)) && <MessageDialog message={notice} onClose={() => setNotice('')} onSettings={() => { setNotice(''); setShowSettings(true) }}>
     {pending && <><p>{pending}</p><button className="listener-action" type="button" onClick={() => {
       const result = appendTranscript(inputActions, latest.current.input, pending, false, 0)
       if (result !== 'blocked') { setPending(''); setNotice('语音已追加') }
-    }}>追加识别文字</button><button className="listener-action" type="button" onClick={() => { void (navigator.clipboard?.writeText(pending) ?? Promise.reject()).then(() => setNotice('已复制识别文字')).catch(() => setNotice('无法复制，请使用追加按钮')) }}>复制</button></>}
+    }}>追加识别文字</button><button className="listener-action" type="button" onClick={() => { void (navigator.clipboard?.writeText(pending) ?? Promise.reject()).then(() => { setPending(''); setNotice('已复制识别文字') }).catch(() => setNotice('无法复制，请使用追加按钮')) }}>复制</button><button className="listener-action" type="button" onClick={() => { setPending(''); setNotice('') }}>丢弃识别文字</button></>}
     </MessageDialog>}
   </div>
 }
@@ -169,13 +177,14 @@ function VoiceSettings() {
   const pendingDownload = useRef<UpdateSource | null>(null)
   const dirty = useRef(false)
   const [revision, setRevision] = useState(0)
+  const formBase = useRef<SettingsView | null>(null)
   useEffect(() => { void settings.refresh().catch(error => setError(error.message)) }, [])
   useEffect(() => () => {
     if (pendingDownload.current) void settings.saveDownload(pendingDownload.current).catch(() => {})
   }, [])
-  useEffect(() => { if (saved) { setRevision(saved.revision); if (!dirty.current) setForm({ ...saved, mirrorUrl: saved.mirrorUrl || defaults.mirrorUrl }) } }, [saved])
+  useEffect(() => { if (saved && !dirty.current) { formBase.current = saved; setRevision(saved.revision); setForm({ ...saved, mirrorUrl: saved.mirrorUrl || defaults.mirrorUrl }) } }, [saved])
   useEffect(() => {
-    if (!saved || busy) return
+    if (!saved || busy || !pendingDownload.current) return
     if (form.updateSource === saved.updateSource && form.mirrorUrl === saved.mirrorUrl) {
       pendingDownload.current = null
       return
@@ -190,7 +199,12 @@ function VoiceSettings() {
     pendingDownload.current = source
     let live = true
     const timer = setTimeout(() => {
-      void settings.saveDownload(source).then(() => {
+      const before = settings.getSnapshot()
+      void settings.saveDownload(source).then(value => {
+        // Only our own single-field write can advance this form's base revision.
+        if (before && formBase.current?.revision === before.revision && value.revision === before.revision + 1) {
+          formBase.current = value; setRevision(value.revision)
+        }
         if (pendingDownload.current?.updateSource === source.updateSource && pendingDownload.current.mirrorUrl === source.mirrorUrl) pendingDownload.current = null
       }).catch(() => { if (live) setError('下载设置未保存，请刷新后重试。') })
     }, 500)
@@ -232,13 +246,21 @@ function VoiceSettings() {
     window.addEventListener('keydown', keydown, true); window.addEventListener('keyup', keyup, true); window.addEventListener('blur', blur)
     return () => { window.removeEventListener('keydown', keydown, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('blur', blur) }
   }, [capture])
-  const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => { dirty.current = true; setForm(p => ({ ...p, [key]: value })) }
+  const update = <K extends keyof Preferences>(key: K, value: Preferences[K]) => {
+    dirty.current = true
+    if (key === 'updateSource' || key === 'mirrorUrl') {
+      try { pendingDownload.current = validateUpdateSource({ ...form, [key]: value }, false) }
+      catch { pendingDownload.current = null }
+    }
+    setForm(p => ({ ...p, [key]: value }))
+  }
   const applySavedSettings = (value: SettingsView) => {
     dirty.current = false
+    formBase.current = value
     setForm(value); setRevision(value.revision); setKey('')
   }
   const saveConfiguration = () => {
-    setBusy(true); setSaving(true); setMessage('')
+    setBusy(true); setSaving(true); setCapture(false); setMessage('')
     void settings.save(form, revision, key.trim() || undefined).then(value => {
       applySavedSettings(value); setMessage('设置已保存')
     }).catch(error => setError(error.message)).finally(() => { setBusy(false); setSaving(false) })
@@ -261,7 +283,8 @@ function VoiceSettings() {
   }
   return <section className="listener-settings" data-listener-settings>
     <h2>语音输入</h2><p>dsh-listener: 轻量化云端实时识别语音</p>
-    <label className="listener-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => setKey(e.target.value)}/></label>
+    <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+    <label className="listener-field"><span>API Key</span><input type="password" autoComplete="off" value={key} placeholder={saved?.configured ? '已配置；留空保留原密钥' : '输入百炼 API Key'} onChange={e => { dirty.current = true; setKey(e.target.value) }}/></label>
     <label className="listener-field"><span>地域</span><select value={form.region} onChange={e => update('region', e.target.value as Preferences['region'])}><option value="beijing">北京</option><option value="singapore">新加坡</option></select></label>
     <label className="listener-field"><span>Workspace ID</span><div><input aria-label="Workspace ID" aria-describedby="listener-workspace-hint" value={form.workspaceId} placeholder="空间 ID，或粘贴完整 API Host" onChange={e => {
       const value = e.target.value.trim(), workspace = workspaceFromHost(value)
@@ -275,7 +298,7 @@ function VoiceSettings() {
     <div className="listener-actions">
       <button className="listener-action listener-primary" type="button" disabled={busy || !saved?.writable} onClick={saveConfiguration}>{saving ? '保存中…' : '保存'}</button>
       <button type="button" className="listener-action" disabled={busy || !saved?.writable} onClick={resetConfiguration}>清除已保存配置</button>
-      <button type="button" className="listener-action" disabled={busy} onClick={() => { dirty.current = false; void settings.refresh().catch(error => setError(error.message)) }}>刷新</button>
+      <button type="button" className="listener-action" disabled={busy} onClick={() => { setBusy(true); setCapture(false); void settings.refresh().then(() => { const value = settings.getSnapshot(); if (value) applySavedSettings(value) }).catch(error => setError(error.message)).finally(() => setBusy(false)) }}>刷新</button>
     </div>
     <p role="status">{saved && !saved.writable ? '当前 Harness 配置只读。' : message}</p>
     <details open><summary>插件管理 · v{VERSION}</summary>
@@ -289,6 +312,7 @@ function VoiceSettings() {
       <p role="status" aria-label="更新状态">{managementMessage}</p>
       <UpdateIndicator progress={progress}/>
     </details>
+    </fieldset>
     {error && <MessageDialog message={error} onClose={() => setError('')} onSettings={() => setError('')}/>}
   </section>
 }
@@ -299,7 +323,7 @@ export function apply(ctx: Context): void {
     const sheet = document.createElement('style'); sheet.textContent = style; document.head.append(sheet)
     return () => sheet.remove()
   })
-  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-listener', order: 90 }, VoiceButton))
+  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right', id: 'dsh-listener', order: 90 }, props => <VoiceButton key={props.sessionId} {...props}/>))
   // Bundle configuration is keyed by package name, as in dshmarket. Keep this
   // optional: a host without the plugin page can still use the mic's dialog.
   const bundleSlots = ctx.slots as unknown as {

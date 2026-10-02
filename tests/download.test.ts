@@ -1,6 +1,8 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
-import { access, readFile } from 'node:fs/promises'
+import { access, readFile, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { gzipSync } from 'node:zlib'
 import { createHash } from 'node:crypto'
 import { expect, it, vi } from 'vitest'
@@ -44,4 +46,14 @@ it('npm 安装包必须匹配 registry 的 SHA-512 完整性值', async () => {
   const result = await downloadArchive('https://registry.npmjs.org/package.tgz', '0.4.0', vi.fn(), vi.fn(async () => new Response(bytes)) as any, integrity)
   await result.dispose()
   await expect(downloadArchive('https://registry.npmjs.org/package.tgz', '0.4.0', vi.fn(), vi.fn(async () => new Response(bytes)) as any, 'sha512-' + Buffer.alloc(64).toString('base64'))).rejects.toThrow('完整性校验失败')
+})
+it('安装器仍引用的持久安装包在 dispose 后保留，供后续 pnpm 操作读取', async () => {
+  const bytes = archive()
+  const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`
+  const directory = join(tmpdir(), 'dsh-listener-test-archives')
+  const result = await downloadArchive('https://registry.npmjs.org/package.tgz', '0.4.0', vi.fn(), vi.fn(async () => new Response(bytes)) as any, integrity, directory)
+  try {
+    await result.dispose()
+    expect(await readFile(result.path)).toEqual(bytes)
+  } finally { await unlink(result.path) }
 })

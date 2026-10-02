@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { open, readFile, unlink } from 'node:fs/promises'
+import { mkdir, open, readFile, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { gunzipSync } from 'node:zlib'
@@ -30,8 +30,9 @@ function verifyArchive(bytes: Buffer, version: string): void {
     if (!files.get(root + file)?.length) throw new Error(`下载包缺少 ${file}`)
   }
 }
-export async function downloadArchive(url: string, version: string, progress: (value: UpdateProgress) => void, fetcher: typeof fetch = fetch, integrity?: string) {
-  const path = join(tmpdir(), `dsh-listener-${randomUUID()}.tgz`)
+export async function downloadArchive(url: string, version: string, progress: (value: UpdateProgress) => void, fetcher: typeof fetch = fetch, integrity?: string, storageDirectory?: string) {
+  if (storageDirectory) await mkdir(storageDirectory, { recursive: true })
+  const path = join(storageDirectory ?? tmpdir(), `dsh-listener-${randomUUID()}.tgz`)
   const file = await open(path, 'wx')
   const dispose = () => unlink(path)
   try {
@@ -58,7 +59,9 @@ export async function downloadArchive(url: string, version: string, progress: (v
     const bytes = await readFile(path)
     if (integrity && `sha512-${createHash('sha512').update(bytes).digest('base64')}` !== integrity) throw new Error('安装包完整性校验失败，请重试或更换 npm 下载来源')
     verifyArchive(bytes, version)
-    return { path, dispose }
+    // pnpm keeps file: archive paths in package.json and its lockfile. A verified
+    // profile archive must survive installation, including activation failures.
+    return { path, dispose: storageDirectory ? async () => {} : dispose }
   } catch (error) {
     await file.close().catch(() => {})
     await dispose().catch(() => {})
