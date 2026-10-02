@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from 'vitest'
+import { expect, it } from 'vitest'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import WebSocket, { WebSocketServer } from 'ws'

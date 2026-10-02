@@ -2,7 +2,7 @@
 
 DeepSeek Harness 云端实时语音输入插件。按住右 Alt 说话，松开停止；识别文字追加到当前会话草稿，默认不发送。
 
-当前版本 **0.3.11**。安装与检查更新统一使用 npm 默认渠道。兼容 Harness **0.2.0-rc.2**、Node.js **22.19+（22.x）或 24+**，推荐 Chrome / Edge。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本 **0.3.12**。安装与检查更新统一使用 npm 默认渠道。兼容 Harness **0.2.0-rc.2**、Node.js **22.19+（22.x）或 24+**，推荐 Chrome / Edge。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 安装
 

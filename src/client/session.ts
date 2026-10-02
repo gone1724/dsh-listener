@@ -1,4 +1,4 @@
-import { BASE, MAX_AUDIO_BYTES, MAX_BUFFER_BYTES } from '../shared.ts'
+import { MAX_AUDIO_BYTES, MAX_BUFFER_BYTES } from '../shared.ts'
 import { Recording } from './audio.ts'
 import { HttpVoiceChannel } from './channel.ts'
 
@@ -58,19 +58,7 @@ export class VoiceSession {
           else throw new Error('Unknown voice event')
         } catch { fail('语音服务响应无效') }
       }
-      let diagnosing = false
-      socket.onerror = () => {
-        diagnosing = true
-        // Browser WebSocket errors conceal the handshake status. Compare the same-origin
-        // authenticated HTTP route without sending audio or revealing the API Key.
-        void fetch(`${BASE}/config`, { credentials: 'same-origin', signal: AbortSignal.timeout(3000) }).then(response => {
-          if (response.status === 401) fail('Harness 登录已失效（HTTP 401），请关闭并重新打开 Desktop 页面。')
-          else if (response.status === 403) fail('Harness 拒绝当前页面来源（HTTP 403），请从 Desktop 自带页面打开。')
-          else if (response.ok) fail('语音设置接口正常，但 Harness 音频上传通道不可用。请更新插件并重新打开 Desktop 页面。')
-          else fail(`Harness 语音接口不可用（HTTP ${response.status}），请检查插件是否启用并重启 Desktop。`)
-        }).catch(() => fail('无法访问 Harness 本地语音接口，请检查 Desktop 内核是否运行，并重启 Desktop。'))
-      }
-      socket.onclose = () => { if (!diagnosing) fail('连接中断，录音已取消') }
+      socket.onclose = () => fail('连接中断，录音已取消')
       await capture.start()
       if (this.generation !== run) { await capture.cancel(); return }
       this.set({ phase: 'recording', message: '' })
@@ -103,8 +91,7 @@ export class VoiceSession {
     const socket = this.socket
     this.socket = undefined
     if (socket) {
-      socket.onmessage = null; socket.onclose = null; socket.onerror = null
-      if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'cancel' }))
+      socket.onmessage = null; socket.onclose = null
       socket.close()
     }
     this.queue = []; this.queuedBytes = 0

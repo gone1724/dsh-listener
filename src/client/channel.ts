@@ -2,20 +2,16 @@ import { BASE, MAX_BUFFER_BYTES } from '../shared.ts'
 
 /** Socket-shaped HTTP transport; uploads are serialized so finish never overtakes PCM. */
 export class HttpVoiceChannel {
-  static OPEN = 1
   readyState = 1
   bufferedAmount = 0
   onmessage: ((event: { data: string }) => void) | null = null
-  onerror: (() => void) | null = null
   onclose: (() => void) | null = null
   private id = ''
   private abort = new AbortController()
-  private startup: Promise<void>
   private uploads: Promise<void>
-  constructor(_url?: URL) {
-    this.startup = this.start()
-    this.uploads = this.startup
-    void this.startup.catch(error => this.fail(error))
+  constructor() {
+    this.uploads = this.start()
+    void this.uploads.catch(error => this.fail(error))
   }
   private async request(action: string, options: RequestInit = {}, timeout = 15000) {
     const query = new URLSearchParams({ action, ...(this.id ? { id: this.id } : {}) })

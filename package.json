@@ -1,6 +1,6 @@
 {
   "name": "dsh-listener",
-  "version": "0.3.11",
+  "version": "0.3.12",
   "description": "DeepSeek Harness 云端语音输入插件，支持快捷键录音、阿里云百炼实时识别，并将文字追加到当前会话草稿。",
   "license": "MIT",
   "repository": {

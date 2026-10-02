@@ -1,5 +1,15 @@
 # 验证记录
 
+## v0.3.12：无用代码清理（2026-10-02）
+
+按实际运行链路检查：快捷键/按钮 → Recording 与 PCM worklet → VoiceSession → HTTP 上传/事件轮询 → BailianTask → 最终文字追加草稿。配置、凭据、下载校验与插件更新仍是现有功能所需。
+
+- 构建依赖图包含全部 13 个 TypeScript/TSX 源文件；PCM worklet 作为独立资源由构建脚本复制。未发现脱离运行入口的源文件，不删除整文件。
+- 移除 `/dsh-listener/stream` 旧升级入口：当前客户端只请求 `/channel`，不再需要第二套本地录音任务及连接清理。旧客户端直接调用 `/stream` 不再受支持，重新安装时应同步加载新的 Host 和 Client。
+- HTTP 通道从未触发 `onerror`，错误通过 `onmessage` 传递；移除旧 WebSocket 诊断，保留 HTTP 状态提示、失败取消与资源释放。凭据缺失/不可读测试改走真实 HTTP 服务。
+- 保留 Host 配置接口的 `clearKey` 校验及处理，只移除当前表单未使用的客户端参数。保留宿主类型扩展、peer dependencies 和发布产物。
+- `pnpm check` 通过：52 项测试、TypeScript 未使用变量/参数检查、Host/Client 构建。未调用用户百炼服务或替换 Desktop 中已安装的插件。
+
 ## v0.3.7 插件详情设置入口
 
 - `pnpm check` 通过：51 项测试、TypeScript 检查及 Host/Client 构建。

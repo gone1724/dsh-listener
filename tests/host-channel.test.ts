@@ -1,6 +1,5 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
-import WebSocket from 'ws'
 import { expect, it, vi } from 'vitest'
 import { apply } from '../src/index.ts'
 import { defaults } from '../src/shared.ts'
@@ -16,7 +15,7 @@ it('下载设置独立保存；清除配置恢复默认并移除密钥，拒绝�
       describe: () => [{ ns: 'dsh-listener', value, revision }],
       update: async (_name: string, next: any) => { value = next; revision++ },
     }, connection: { admit: () => ({ peer: {} }) },
-    webServer: { register: (route: any) => { routes.set(route.path, route.handler); return () => {} }, registerUpgrade: () => () => {} },
+    webServer: { register: (route: any) => { routes.set(route.path, route.handler); return () => {} } },
   }
   apply(ctx)
   const server = createServer((req, res) => { void routes.get('/dsh-listener/config')(req, res) })
@@ -42,31 +41,31 @@ it('下载设置独立保存；清除配置恢复默认并移除密钥，拒绝�
   }
 })
 
-it.each(['missing', 'unreadable'])('本地通道能返回 %s 密钥的明确错误，而不是拒绝 WebSocket 握手', async (mode) => {
+it.each(['missing', 'unreadable'])('HTTP 通道拒绝 %s 密钥，不泄露凭据存储细节', async (mode) => {
   const effects: (() => void)[] = []
-  let upgrade: any
-  const server = createServer()
+  const routes = new Map<string, any>()
+  const resolve = vi.fn(async () => { if (mode === 'unreadable') throw new Error('private storage detail'); return undefined })
   const ctx: any = {
     effect(fn: () => (() => void)) { effects.push(fn()) },
     settings: { configure: () => () => {}, describe: () => [{ ns: 'dsh-listener', value: defaults, revision: 0 }], writable: true },
-    credentials: { resolve: async () => { if (mode === 'unreadable') throw new Error('private storage detail'); return undefined } },
+    credentials: { resolve },
     connection: { admit: () => ({ peer: {} }) },
-    webServer: { register: () => () => {}, registerUpgrade: (route: any) => { upgrade = route.handler; return () => {} } },
+    webServer: { register: (route: any) => { routes.set(route.path, route.handler); return () => {} } },
   }
   apply(ctx)
-  server.on('upgrade', (req, socket, head) => { void upgrade(req, socket, head) })
+  const server = createServer((req, res) => { void routes.get('/dsh-listener/channel')(req, res) })
   server.listen(0, '127.0.0.1'); await once(server, 'listening')
   const port = (server.address() as { port: number }).port
-  const client = new WebSocket(`ws://127.0.0.1:${port}/dsh-listener/stream`)
   try {
-    const [raw] = await once(client, 'message')
-    const event = JSON.parse(raw.toString())
-    expect(event.type).toBe('error')
-    expect(event.message).toContain(mode === 'missing' ? 'API Key' : '重新保存')
-    expect(event.message).not.toContain('private storage detail')
+    const response = await fetch(`http://127.0.0.1:${port}/dsh-listener/channel?action=start`, { method: 'POST' })
+    expect(response.status).toBe(mode === 'missing' ? 400 : 500)
+    const event = await response.json()
+    expect(event.error).toContain(mode === 'missing' ? 'API Key' : '凭据存储')
+    expect(event.error).not.toContain('private storage detail')
+    expect(resolve).toHaveBeenCalledOnce()
   } finally {
-    client.terminate()
     for (const dispose of effects.reverse()) dispose()
+    server.closeAllConnections()
     await new Promise<void>(resolve => server.close(() => resolve()))
   }
 })

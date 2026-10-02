@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 const audio = vi.hoisted(() => ({ starts: [] as (() => void)[], chunks: [] as ((chunk: ArrayBuffer) => void)[], stops: 0, cancels: 0, flush: true }))
 vi.mock('../src/client/audio.ts', () => ({ Recording: class {
   constructor(chunk: (data: ArrayBuffer) => void) { audio.chunks.push(chunk) }
@@ -6,16 +6,14 @@ vi.mock('../src/client/audio.ts', () => ({ Recording: class {
   async stop() { audio.stops++; if (audio.flush) audio.chunks.at(-1)?.(new ArrayBuffer(2)) }
   async cancel() { audio.cancels++ }
 } }))
-vi.mock('../src/client/channel.ts', () => ({ HttpVoiceChannel: class { constructor() { return new WebSocket('ws://localhost') } } }))
+vi.mock('../src/client/channel.ts', () => ({ HttpVoiceChannel: class { constructor() { return new Socket() } } }))
 import { VoiceSession } from '../src/client/session.ts'
 import { MAX_AUDIO_BYTES } from '../src/shared.ts'
 class Socket {
-  static OPEN = 1
   static instances: Socket[] = []
   readyState = 1; bufferedAmount = 0
   onmessage: ((event: { data: string }) => void) | null = null
   onclose: (() => void) | null = null
-  onerror: (() => void) | null = null
   sent: any[] = []
   constructor() { Socket.instances.push(this) }
   send(data: any) { this.sent.push(data) }
@@ -24,9 +22,7 @@ class Socket {
 }
 beforeEach(() => {
   audio.starts = []; audio.chunks = []; audio.stops = 0; audio.cancels = 0; audio.flush = true; Socket.instances = []
-  vi.stubGlobal('WebSocket', Socket); vi.stubGlobal('window', { location: { href: 'http://localhost/' } })
 })
-afterEach(() => vi.unstubAllGlobals())
 it('服务正常返回空文本时安静结束，不触发草稿或提示回调', async () => {
   const final = vi.fn(), session = new VoiceSession(final)
   const start = session.start(); audio.starts[0](); await start
@@ -43,14 +39,12 @@ it('极短录音没有采到 PCM 时安静取消并释放麦克风', async () =>
   expect(session.getSnapshot().phase).toBe('idle'); expect(session.getSnapshot().message).toBe('')
   expect(audio.cancels).toBeGreaterThan(0); expect(final).not.toHaveBeenCalled()
 })
-it.each([401, 403, 200])('WebSocket 失败时依据本地 HTTP %s 定位，而不是误报百炼密钥', async (status) => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status, ok: status === 200 }))
+it.each([401, 403, 500])('HTTP 通道错误保留 HTTP %s 提示并释放麦克风', async (status) => {
   const session = new VoiceSession(vi.fn())
   const start = session.start(); audio.starts[0](); await start
-  Socket.instances[0].onerror?.(); Socket.instances[0].onclose?.()
-  await Promise.resolve(); await Promise.resolve()
+  Socket.instances[0].message({ type: 'error', message: `Harness 语音接口 HTTP ${status}：请求失败` })
   expect(session.getSnapshot().phase).toBe('error')
-  expect(session.getSnapshot().message).toContain(status === 200 ? '音频上传通道不可用' : `HTTP ${status}`)
+  expect(session.getSnapshot().message).toContain(`HTTP ${status}`)
   expect(audio.cancels).toBeGreaterThan(0)
 })
 it('权限申请时松键取消，不会在迟到授权后开始持续录音', async () => {

@@ -1,7 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -19,7 +18,7 @@ const style = `
 .listener-button{border:0;border-radius:8px;padding:7px;display:inline-flex;align-items:center;gap:5px;color:#858585;background:transparent;cursor:pointer;font:inherit}
 .listener-button:hover{background:var(--dsw-alias-bg-layer-2,#8882)}.listener-button:disabled{opacity:.5;cursor:default}
 .listener-button[data-recording=true]{color:#16a34a;background:#16a34a18}.listener-button:focus-visible,.listener-settings input:focus-visible,.listener-settings select:focus-visible{outline:2px solid #16a34a;outline-offset:2px}
-.listener-control{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.listener-status{font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.listener-control{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .listener-settings{max-width:480px;padding:12px;color:inherit;font:inherit;font-size:13px}.listener-settings h2{margin:0 0 6px;font-size:16px}.listener-settings p{line-height:1.5;opacity:.8;margin:8px 0}.listener-settings details{margin:10px 0;font-size:12px;opacity:.85}
 .listener-field{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:16px 0}.listener-field input:not([type=checkbox]),.listener-field select{box-sizing:border-box;width:100%;padding:9px 10px;color:inherit;background:var(--dsw-alias-bg-layer-2,#8881);border:1px solid #8885;border-radius:7px;font:inherit}.listener-field input[type=checkbox]{width:18px;height:18px;accent-color:#16a34a}
 .listener-actions{display:flex;gap:10px;margin-top:20px}.listener-action{padding:8px 14px;border:1px solid #8885;border-radius:7px;background:transparent;color:inherit;cursor:pointer;font:inherit}.listener-primary{background:#15803d;color:white;border-color:#15803d}.listener-action:disabled{opacity:.5;cursor:default}
