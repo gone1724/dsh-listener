@@ -10,6 +10,16 @@ DeepSeek Harness 云端流式语音输入插件。按住右 Alt 说话，松开�
 
 当前兼容目标为 **DeepSeek Harness `0.2.0-rc.2`**、Node.js **22.19+**、pnpm **10.18+**。浏览器优先使用新版 Chrome / Edge；其他浏览器和桌面容器尚需验证。Harness 插件接口处于预览阶段，不承诺其他版本兼容。
 
+### npm 测试版安装
+
+npm 测试版使用 `beta` 标签。Desktop 的添加插件输入框可以填写固定版本 `dsh-speeker@0.3.7`；命令行安装：
+
+```powershell
+dsh plugin --profile web add dsh-speeker@0.3.7
+```
+
+也可使用 `dsh-speeker@beta` 获取最新测试版。插件自带的检查更新仍以 GitHub 正式版本标签为来源。测试版尚未完成真实百炼准确率、延迟、计费与各 Desktop 环境验收；接近 120 秒的录音收尾时间、下载更新期间开始新录音的并发行为仍待完善。
+
 ### 1. 桌面版 Harness 安装
 
 1. 打开 DSH Desktop，点击 **插件**，再点击 **添加插件**。

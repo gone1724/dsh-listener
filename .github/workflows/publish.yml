@@ -1,0 +1,44 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: npm distribution tag
+        type: choice
+        options:
+          - beta
+          - latest
+        default: beta
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.0
+      - run: npm install --global npm@11
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm verify:package
+      - name: Publish verified archive with OIDC
+        env:
+          PUBLISH_CHANNEL: ${{ inputs.channel }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          npm publish "./output/dsh-speeker-${VERSION}.tgz" --access public --tag "$PUBLISH_CHANNEL" --registry=https://registry.npmjs.org

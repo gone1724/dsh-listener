@@ -3,6 +3,19 @@
   "version": "0.3.7",
   "description": "DeepSeek Harness 云端语音输入插件，支持快捷键录音、阿里云百炼实时识别，并将文字追加到当前会话草稿。",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gone1724/dsh-listener.git"
+  },
+  "homepage": "https://github.com/gone1724/dsh-listener#readme",
+  "bugs": {
+    "url": "https://github.com/gone1724/dsh-listener/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "tag": "beta"
+  },
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -18,6 +31,7 @@
     "CHANGELOG.md",
     "docs/VALIDATION.md",
     "docs/UPDATES.md",
+    "docs/PUBLISHING.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],
@@ -37,7 +51,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test && pnpm build",
-    "verify:package": "pnpm pack --out output/dsh-speeker-0.3.7.tgz && node scripts/verify-package.mjs",
+    "verify:package": "pnpm pack --pack-destination output && node scripts/verify-package.mjs",
     "prepack": "pnpm build"
   },
   "dsh": {

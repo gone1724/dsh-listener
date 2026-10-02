@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
-const tar = gunzipSync(readFileSync('output/dsh-speeker-0.3.7.tgz'))
+const sourceManifest = JSON.parse(readFileSync('package.json', 'utf8'))
+const tar = gunzipSync(readFileSync(`output/${sourceManifest.name.replace('@', '').replace('/', '-')}-${sourceManifest.version}.tgz`))
 const files = new Map()
 for (let offset = 0; offset + 512 <= tar.length;) {
   const header = tar.subarray(offset, offset + 512)
@@ -18,7 +19,9 @@ assert.match(files.get('package/lib/client.js').toString(), /window\.__ModuleLoa
 assert.match(files.get('package/lib/pcm-worklet.js').toString(), /registerProcessor/)
 const manifest = JSON.parse(files.get('package/package.json').toString())
 assert.equal(manifest.exports['./package.json'], './package.json', 'Harness must be able to resolve plugin display metadata')
-assert.equal(manifest.description, JSON.parse(readFileSync('package.json', 'utf8')).description)
+assert.equal(manifest.name, sourceManifest.name)
+assert.equal(manifest.version, sourceManifest.version)
+assert.equal(manifest.description, sourceManifest.description)
 assert.ok(manifest.description.trim(), 'Plugin description must not be empty')
 assert.ok(![...files.keys()].some(name => /(?:\.env|credentials|harness-home|node_modules|mock-cloud)/.test(name)), 'Unexpected private or test file in package')
 console.log(`Package verified: ${files.size} files, client module factory and PCM worklet included.`)
